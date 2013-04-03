@@ -530,6 +530,10 @@ float BLEUScore::ComputeScore() const {
   return ComputeScore(NULL, NULL);
 }
 
+float BLEUScore::ComputeSentScore() const {
+  return ComputeSentScore(NULL,NULL);
+}
+
 void BLEUScore::Subtract(const Score& rhs, Score* res) const {
   const BLEUScore& d = static_cast<const BLEUScore&>(rhs);
   BLEUScore* o = static_cast<BLEUScore*>(res);
