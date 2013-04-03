@@ -49,6 +49,7 @@ class AERScore : public ScoreBase<AERScore> {
   float Recall() const {
     return static_cast<float>(num_matches) / num_in_ref;
   }
+  float ComputeSentScore() const {return 0.0;}
   float ComputePartialScore() const { return 0.0;}
   virtual float ComputeScore() const {
     const float prec = Precision();

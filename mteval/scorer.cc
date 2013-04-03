@@ -88,6 +88,7 @@ class SERScore : public ScoreBase<SERScore> {
  public:
   SERScore() : correct(0), total(0) {}
   float ComputePartialScore() const { return 0.0;}
+  float ComputeSentScore() const {return 0.0;}
   float ComputeScore() const {
     return static_cast<float>(correct) / static_cast<float>(total);
   }
@@ -157,6 +158,7 @@ class BLEUScore : public ScoreBase<BLEUScore> {
     ref_len = k;
     hyp_len = k; }
   float ComputeScore() const;
+  float ComputeSentScore() const;
   float ComputePartialScore() const;
   void ScoreDetails(string* details) const;
   void TimesEquals(float scale);
@@ -179,6 +181,7 @@ class BLEUScore : public ScoreBase<BLEUScore> {
     return hyp_ngram_counts.size();
   }
   float ComputeScore(vector<float>* precs, float* bp) const;
+  float ComputeSentScore(vector<float>* precs, float* bp) const;
   float ComputePartialScore(vector<float>* prec, float* bp) const;
   valarray<float> correct_ngram_hit_counts;
   valarray<float> hyp_ngram_counts;
@@ -456,6 +459,41 @@ float BLEUScore::ComputeScore(vector<float>* precs, float* bp) const {
   }
   //return wb;
   return bleus.back();
+}
+
+float BLEUScore::ComputeSentScore(vector<float>* precs, float* bp) const {
+  bool DEBUG_SCORE = false;
+  float log_bleu = 0;
+  if (precs) precs->clear();
+  int count = 4;
+  float lprec=0;
+  float smooth_factor=1.0;
+
+  for (int i = 0; i < hyp_ngram_counts.size(); ++i) {
+
+    if(hyp_ngram_counts[i] > 0)
+    {
+      if (correct_ngram_hit_counts[i] > 0) {
+        lprec = log(correct_ngram_hit_counts[i]) - log(hyp_ngram_counts[i]);}
+      else
+      {
+        smooth_factor *= 0.5;
+        lprec = log(smooth_factor) - log(hyp_ngram_counts[i]);
+      }
+      if (precs) precs->push_back(exp(lprec));
+      log_bleu += lprec;
+      //      ++count;
+    }
+
+
+    log_bleu /= static_cast<float>(count);
+    float lbp = 0.0;
+    if (hyp_len < ref_len)
+      lbp = (hyp_len - ref_len) / hyp_len;
+    log_bleu += lbp;
+    if (bp) *bp = exp(lbp);
+    return exp(log_bleu);
+  }
 }
 
 

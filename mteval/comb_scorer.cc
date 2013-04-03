@@ -9,6 +9,9 @@ class BLEUTERCombinationScore : public ScoreBase<BLEUTERCombinationScore> {
  public:
   ~BLEUTERCombinationScore();
   float ComputePartialScore() const { return 0.0;}
+  float ComputeSentScore() const {
+    return (bleu->ComputeSentScore() - ter->ComputeScore()) / 2.0f;
+  }
   float ComputeScore() const {
     return (bleu->ComputeScore() - ter->ComputeScore()) / 2.0f;
   }

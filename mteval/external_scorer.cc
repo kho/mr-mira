@@ -123,6 +123,7 @@ struct ExternalScore : public ScoreBase<ExternalScore> {
   explicit ExternalScore(ScoreServer* s) : score_server(s), fields() {}
   ExternalScore(ScoreServer* s, const vector<float>& f) : score_server(s), fields(f) {}
   float ComputePartialScore() const { return 0.0;}
+  float ComputeSentScore() const { return 0.0;}
   float ComputeScore() const {
     return score_server->ComputeScore(fields);
   }
