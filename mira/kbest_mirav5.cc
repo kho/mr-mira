@@ -1,5 +1,7 @@
 #include <sstream>
+#include <map>
 #include <iostream>
+#include <iterator>
 #include <vector>
 #include <cassert>
 #include <cmath>
@@ -26,9 +28,12 @@
 // #include "fdict.h"
 // #include "time.h"
 #include "utils/sampler.h"
+#include "utils/stringlib.h"
 
 #include "utils/weights.h"
 #include "utils/sparse_vector.h"
+
+#include "ipc.h"
 
 using namespace std;
 using boost::lexical_cast;
@@ -181,8 +186,8 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
   opts.add_options()
       ("input_weights,w",po::value<string>(),"Input feature weights file")
       // ("source,i",po::value<string>(),"Source file for development set")
-      ("passes,p", po::value<int>()->default_value(15), "Number of passes through the training data")
-      ("reference,r",po::value<vector<string> >(), "[REQD] Reference translation(s) (tokenized text file)")
+      ("passes,p", po::value<int>()->default_value(0), "Current pass through the training data")
+      // ("reference,r",po::value<vector<string> >(), "[REQD] Reference translation(s) (tokenized text file)")
       ("mt_metric,m",po::value<string>()->default_value("ibm_bleu"), "Scoring metric (ibm_bleu, nist_bleu, koehn_bleu, ter, combi)")
       ("optimizer,o",po::value<int>()->default_value(1), "Optimizer (sgd=1, mira 1-fear=2, full mira w/ cutting plane=3, full mira w/ nbest list=5, local update=4)")
       ("fear,f",po::value<int>()->default_value(1), "Fear selection (model-cost=1, max-cost=2, pred-base=3)")
@@ -196,28 +201,41 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
       // ("k_best_size,k", po::value<int>()->default_value(250), "Size of hypothesis list to search for oracles")
       ("update_k_best,b", po::value<int>()->default_value(1), "Size of good, bad lists to perform update with")
       // ("unique_k_best,u", "Unique k-best translation list")
-      ("weights_output,O",po::value<string>(),"Directory to write weights to")
-      ("output_dir,D",po::value<string>(),"Directory to place output in")
-      ("pseudo_doc", "Use pseudo doc score approximation")
+      // ("weights_output,O",po::value<string>(),"Directory to write weights to")
+      // ("output_dir,D",po::value<string>(),"Directory to place output in")
+      // ("pseudo_doc", "Use pseudo doc score approximation")
       // ("decoder_config,c",po::value<string>(),"Decoder configuration file")
       ;
+
+  // Decoder command
+  po::options_description hidden("Hidden options");
+  hidden.add_options()
+      ("cmd", po::value<vector<string> >(), "Decoder command")
+      ;
+  po::positional_options_description popts;
+  popts.add("cmd", -1);
+
   po::options_description clo("Command line options");
   clo.add_options()
       ("config", po::value<string>(), "Configuration file")
       ("help,H", "Print this help message and exit");
-  po::options_description dconfig_options, dcmdline_options;
+  po::options_description dconfig_options, dcmdline_options, visible_options;
   dconfig_options.add(opts);
-  dcmdline_options.add(opts).add(clo);
+  dcmdline_options.add(opts).add(clo).add(hidden);
+  visible_options.add(opts).add(clo);
 
-  po::store(parse_command_line(argc, argv, dcmdline_options), *conf);
+  // po::store(parse_command_line(argc, argv, dcmdline_options), *conf);
+  po::store(po::command_line_parser(argc, argv).options(dcmdline_options).positional(popts).run(), *conf);
+
   if (conf->count("config")) {
     ifstream config((*conf)["config"].as<string>().c_str());
     po::store(po::parse_config_file(config, dconfig_options), *conf);
   }
   po::notify(*conf);
 
-  if (conf->count("help") || !conf->count("input_weights") || !conf->count("reference")) {
-    cerr << dcmdline_options << endl;
+  if (conf->count("help") || !conf->count("input_weights") || !conf->count("cmd")/* || !conf->count("reference")*/) {
+    cerr << "Usage: " << argv[0] << " [options] [decoder command]" << endl;
+    cerr << visible_options << endl;
     return false;
   }
   return true;
@@ -258,12 +276,6 @@ class InputRecord {
   }
 };
 
-// TODO
-class Messenger {
- public:
-  template <class T> void Push(T) {}
-  template <class T> void Pull(T) {}
-};
 
 struct HypothesisInfo {
   // Read from decoder output
@@ -983,6 +995,49 @@ ScoreP SafeGetZero(ScoreType type) {
   return source->GetZero();
 }
 
+// Message format: input.src\tgrammar
+// delta is added as a SGML field
+void ToDecoder(const InputRecord &input, const SparseVector<double> &delta, Messenger *m) {
+  int non_zero = 0;
+  // Decide if we need to send delta update
+  for (SparseVector<double>::const_iterator dit = delta.begin();
+       dit != delta.end(); ++dit)
+    if (dit->second != 0) ++non_zero;
+  // Prepare input message
+  string msg = input.src;
+  map<string, string> sgml;
+  ProcessAndStripSGML(&msg, &sgml);
+  if (non_zero) {
+    ostringstream delta_strm;
+    delta_strm.precision(17);
+    print(delta_strm, delta, " ");
+    sgml["delta"] = delta_strm.str();
+  }
+  msg = SGMLOpenSegTag(sgml) + " " + msg + " </seg>\t" + input.grammar;
+  m->Push(msg);
+}
+
+// Pushes new HypothesisInfo
+class HiPusher : public Messenger::Consumer {
+ public:
+  HiPusher(vector<shared_ptr<HypothesisInfo> > *hyps) : hyps_(hyps) {
+    hyps_->clear();
+  }
+ private:
+  void expect_(int n) {
+    hyps_->reserve(n);
+  }
+  void action_(const string &line) {
+    hyps_->push_back(HypothesisInfo::FromRaw(line));
+  }
+  vector<shared_ptr<HypothesisInfo> > *hyps_;
+};
+
+void FromDecoder(Messenger *m, vector<shared_ptr<HypothesisInfo> > *hyps) {
+  HiPusher c(hyps);
+  m->Pull(&c);
+}
+
 
 int main(int argc, char** argv) {
   // register_feature_functions();
@@ -990,6 +1045,13 @@ int main(int argc, char** argv) {
 
   po::variables_map conf;
   if (!InitCommandLine(argc, argv, &conf)) return 1;
+
+  vector<string> cmd(conf["cmd"].as<vector<string> >());
+  cerr << "Decoder command: ";
+  copy(cmd.begin(), cmd.end(), ostream_iterator<string>(cerr, " "));
+  cerr << endl;
+
+  Messenger messenger(cmd);
 
   if (conf.count("random_seed"))
     rng.reset(new MT19937(conf["random_seed"].as<uint32_t>()));
@@ -1009,7 +1071,8 @@ int main(int argc, char** argv) {
   no_select = conf.count("no_select");
   update_list_size = conf["update_k_best"].as<int>();
   // unique_kbest = conf.count("unique_k_best");
-  pseudo_doc = conf.count("pseudo_doc");
+  // pseudo_doc = conf.count("pseudo_doc");
+  pseudo_doc = true;
   if (pseudo_doc && mt_metric_scale != 1) {
     cerr << "pseudo_doc enabled; forcing mt_metric_scale to 1" << endl;
     mt_metric_scale = 1;
@@ -1111,9 +1174,6 @@ int main(int argc, char** argv) {
   cerr << "PASS " << cur_pass << " " << endl << "LAMBDAS: " << lambdas << endl;
   ScoreP acc = SafeGetZero(type), acc_h = SafeGetZero(type), acc_f = SafeGetZero(type);
 
-
-  Messenger messenger;
-
   SparseVector<double> lambda_delta;
 
   while(*in) {
@@ -1123,20 +1183,11 @@ int main(int argc, char** argv) {
     InputRecord sent(buf);
 
     // Feed input to the decoder
-    messenger.Push(sent);               // FIXME: weight updates
-
-    // int input_lines = lexical_cast<int>(buf);
-    // if (input_lines < 0) continue;
+    ToDecoder(sent, lambda_delta, &messenger);
 
     // Collect output from the decoder
     vector<shared_ptr<HypothesisInfo> > all_hyps;
-    messenger.Pull(&all_hyps);
-    // all_hyps.reserve(input_lines);
-    // while (input_lines--) {
-    //   getline(*in, buf);
-    //   if (buf.empty()) continue;
-    //   all_hyps.push_back(HypothesisInfo::FromRaw(buf));
-    // }
+    FromDecoder(&messenger, &all_hyps);
 
     cur_sent = all_hyps.front()->sent_id;
 
@@ -1428,13 +1479,9 @@ int main(int argc, char** argv) {
     }
     cout << cur_sent << "\t" << TD::GetString(cur_best_v[0]->hyp) << endl;
 
-    // Give back delta weights along with BEST-HOPE-FEAR
-    // output. MIRA Master will pass the weights to decoder.
+    // Change in weights; to be passed to the decoder at next iteration
     lambda_delta *= -1;
     lambda_delta += lambdas;
-    // cout.precision(17);
-    // print(cout, saved_lambdas, " ");
-    // cout << " ||| " << TD::GetString(cur_good_v[0]->hyp) << " ||| " << TD::GetString(cur_best_v[0]->hyp) << " ||| " << TD::GetString(cur_bad_v[0]->hyp) << endl;
 
     //clear good/bad lists from oracles for this sentences  - you want to keep them around for things
 
