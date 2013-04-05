@@ -1013,7 +1013,11 @@ void ToDecoder(const InputRecord &input, const SparseVector<double> &delta, Mess
     print(delta_strm, delta, " ");
     sgml["delta"] = delta_strm.str();
   }
-  msg = SGMLOpenSegTag(sgml) + " " + msg + " </seg>\t" + input.grammar;
+  msg = SGMLOpenSegTag(sgml) + " " + msg + " </seg>";
+  if (input.grammar.size()) {
+    msg += "\t";
+    msg += input.grammar;
+  }
   m->Push(msg);
 }
 
