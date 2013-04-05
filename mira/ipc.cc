@@ -142,7 +142,8 @@ void Messenger::Push(const char *data, bool add_eol) {
     throw runtime_error(string("Messenger::Push(): ") + strerror(errno));
 }
 
-static inline string ReadLine(int fd) {
+string Messenger::RawPull() {
+  int fd = from_decoder_->ReadFd();
   string ret;
   char ch;
   int r = 0;
@@ -151,9 +152,23 @@ static inline string ReadLine(int fd) {
   return ret;
 }
 
-void Messenger::Pull(vector<string> *out) {
-  out->clear();
-  string buf = ReadLine(from_decoder_->ReadFd());
+class VectorPusher : public Messenger::Consumer {
+ public:
+  VectorPusher(vector<string> *out) : out_(out) {
+    out_->clear();
+  }
+ private:
+  void action_(const string &line) {
+    out_->push_back(line);
+  }
+  void expect_(int n) {
+    out_->reserve(n);
+  }
+  vector<string> *out_;
+};
+
+void Messenger::Pull(Consumer *c) {
+  string buf = RawPull();
   int input_lines = -1;
   try {
     input_lines = boost::lexical_cast<int>(buf);
@@ -164,10 +179,15 @@ void Messenger::Pull(vector<string> *out) {
     cerr << "Messenger::Pull(): got negative line count: " << input_lines << "; skipping..." << endl;
     return;
   }
-  out->reserve(input_lines);
+  c->Expect(input_lines);
   while (input_lines--) {
-    buf = ReadLine(from_decoder_->ReadFd());
+    buf = RawPull();
     if (buf.empty()) continue;
-    out->push_back(buf);
+    c->Notify(buf);
   }
+}
+
+void Messenger::Pull(vector<string> *out) {
+  VectorPusher c(out);
+  Pull(&c);
 }
