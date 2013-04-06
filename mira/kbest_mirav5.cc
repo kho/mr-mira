@@ -234,7 +234,7 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
   po::notify(*conf);
 
   if (conf->count("help") || !conf->count("input_weights") || !conf->count("cmd")/* || !conf->count("reference")*/) {
-    cerr << "Usage: " << argv[0] << " [options] [decoder command]" << endl;
+    cerr << "Usage: " << argv[0] << " [options] -- [decoder command]" << endl;
     cerr << visible_options << endl;
     return false;
   }
@@ -1083,8 +1083,8 @@ int main(int argc, char** argv) {
   }
   sent_approx = false;
 
-  const string weights_dir = conf["weights_output"].as<string>();
-  const string output_dir = conf["output_dir"].as<string>();
+  // const string weights_dir = conf["weights_output"].as<string>();
+  // const string output_dir = conf["output_dir"].as<string>();
   ScoreType type = ScoreTypeFromString(metric_name);
   metric_name = StringFromScoreType(type);
   cerr << "Using metric " << metric_name << endl;
@@ -1521,7 +1521,7 @@ int main(int argc, char** argv) {
   dots = 0;
   ostringstream os;
   // os << weights_dir << "/weights.mira-pass" << (cur_pass < 10 ? "0" : "") << cur_pass << "." << node_id << ".gz";
-  string msg = "# weights ||| " + boost::lexical_cast<std::string>(node_id) + " ||| " + boost::lexical_cast<std::string>(lcount);
+  string msg = "# weights |||" + boost::lexical_cast<std::string>(node_id) + "|||" + boost::lexical_cast<std::string>(lcount);
   //Weights.InitFromVector(lambdas);
   // lambdas.init_vector(&dense_weights);
   // Weights::WriteToFile(os.str(), dense_weights, true, &msg);
