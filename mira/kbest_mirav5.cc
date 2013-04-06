@@ -16,6 +16,7 @@
 
 // #include "sentence_metadata.h"
 #include "mteval/scorer.h"
+#include "utils/b64tools.h"
 #include "utils/tdict.h"
 // #include "verbose.h"
 // #include "viterbi.h"
@@ -995,30 +996,47 @@ ScoreP SafeGetZero(ScoreType type) {
   return source->GetZero();
 }
 
+void EncodeFeatureWeight(const string &featname, weight_t weight, ostream *output) {
+  output->write(featname.data(), featname.size() + 1);
+  output->write(reinterpret_cast<char *>(&weight), sizeof(weight));
+  cerr.precision(17);
+  cerr << "[mira weight update] " << featname << " " << weight
+       << " = " << hex << *reinterpret_cast<unsigned long long *>(&weight) << endl;
+}
+
 // Message format: input.src\tgrammar
 // delta is added as a SGML field
 void ToDecoder(const InputRecord &input, const SparseVector<double> &delta, Messenger *m) {
-  int non_zero = 0;
   // Decide if we need to send delta update
-  for (SparseVector<double>::const_iterator dit = delta.begin();
-       dit != delta.end(); ++dit)
-    if (dit->second != 0) ++non_zero;
+  string delta_b64;
+  {
+    ostringstream base64_strm;
+    {
+      ostringstream delta_strm;
+      for (SparseVector<double>::const_iterator dit = delta.begin();
+           dit != delta.end(); ++dit)
+        if (dit->second != 0) EncodeFeatureWeight(FD::Convert(dit->first), dit->second, &delta_strm);
+      string data(delta_strm.str());
+      B64::b64encode(data.data(), data.size(), &base64_strm);
+    }
+    delta_b64 = base64_strm.str();
+  }
+
   // Prepare input message
-  string msg = input.src;
+  string src = input.src;
   map<string, string> sgml;
-  ProcessAndStripSGML(&msg, &sgml);
-  if (non_zero) {
-    ostringstream delta_strm;
-    delta_strm.precision(17);
-    print(delta_strm, delta, " ");
-    sgml["delta"] = delta_strm.str();
+  ProcessAndStripSGML(&src, &sgml);
+  if (delta_b64.size()) {
+    sgml["delta"] = delta_b64;
   }
-  msg = SGMLOpenSegTag(sgml) + " " + msg + " </seg>";
-  if (input.grammar.size()) {
-    msg += "\t";
-    msg += input.grammar;
+  m->Push(SGMLOpenSegTag(sgml), false); // <seg id ... >
+  m->Push(" ", false); m->Push(src, false); // body
+  m->Push(" </seg>", false);                // </seg>
+  if (input.grammar.size()) {               // optional grammar
+    m->Push("\t", false);
+    m->Push(input.grammar, false);
   }
-  m->Push(msg);
+  m->Push("");                          // end of line
 }
 
 // Pushes new HypothesisInfo
