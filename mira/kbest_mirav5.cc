@@ -16,7 +16,7 @@
 
 // #include "sentence_metadata.h"
 #include "mteval/scorer.h"
-#include "utils/b64tools.h"
+#include "utils/b64featvector.h"
 #include "utils/tdict.h"
 // #include "verbose.h"
 // #include "viterbi.h"
@@ -295,6 +295,8 @@ struct HypothesisInfo {
 
   static shared_ptr<HypothesisInfo> FromRaw(const string &line) {
     shared_ptr<HypothesisInfo> ret(new HypothesisInfo);
+    // make alpha zero
+    ret->alpha = 0;
     istringstream bufin(line);
     string word;
     // Check sent_id
@@ -309,12 +311,8 @@ struct HypothesisInfo {
     while (bufin >> word && word != "|||")
       ret->hyp.push_back(TD::Convert(word));
     // Features
-    while (bufin >> word && word != "|||") {
-      size_t equal = word.find('=');
-      string featname(word, 0, equal);
-      double featval = equal == string::npos ? 1 : lexical_cast<double>(string(word, equal + 1));
-      ret->features[FD::Convert(featname)] = featval;
-    }
+    bufin >> word;
+    DecodeFeatureVector(word, &(ret->features));
     return ret;
   }
 };
@@ -996,32 +994,20 @@ ScoreP SafeGetZero(ScoreType type) {
   return source->GetZero();
 }
 
-void EncodeFeatureWeight(const string &featname, weight_t weight, ostream *output) {
-  output->write(featname.data(), featname.size() + 1);
-  output->write(reinterpret_cast<char *>(&weight), sizeof(weight));
-  cerr.precision(17);
-  cerr << "[mira weight update] " << featname << " " << weight
-       << " = " << hex << *reinterpret_cast<unsigned long long *>(&weight) << endl;
-}
+
 
 // Message format: input.src\tgrammar
 // delta is added as a SGML field
-void ToDecoder(const InputRecord &input, const SparseVector<double> &delta, Messenger *m) {
-  // Decide if we need to send delta update
-  string delta_b64;
-  {
-    ostringstream base64_strm;
-    {
-      ostringstream delta_strm;
-      for (SparseVector<double>::const_iterator dit = delta.begin();
-           dit != delta.end(); ++dit)
-        if (dit->second != 0) EncodeFeatureWeight(FD::Convert(dit->first), dit->second, &delta_strm);
-      string data(delta_strm.str());
-      B64::b64encode(data.data(), data.size(), &base64_strm);
-    }
-    delta_b64 = base64_strm.str();
+void ToDecoder(const InputRecord &input, const SparseVector<weight_t> &delta, Messenger *m) {
+  for (SparseVector<weight_t>::const_iterator dit = delta.begin();
+       dit != delta.end(); ++dit) {
+    union { weight_t weight; unsigned long long repr; } weight;
+    weight.weight = dit->second;
+    if (weight.weight == 0) continue;
+    cerr << "[mira weight update] " << FD::Convert(dit->first) << " " << weight.weight
+         << " = " << hex << weight.repr << endl;
   }
-
+  string delta_b64 = EncodeFeatureVector(delta);
   // Prepare input message
   string src = input.src;
   map<string, string> sgml;

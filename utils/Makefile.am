@@ -21,6 +21,7 @@ libutils_a_SOURCES = \
   alignment_io.h \
   array2d.h \
   b64tools.h \
+  b64featvector.h \
   batched_append.h \
   city.h \
   citycrc.h \
@@ -66,6 +67,7 @@ libutils_a_SOURCES = \
   intrusive_refcount.hpp \
   alignment_io.cc \
   b64tools.cc \
+  b64featvector.cc \
   corpus_tools.cc \
   dict.cc \
   tdict.cc \
