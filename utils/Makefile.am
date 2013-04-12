@@ -1,4 +1,4 @@
-bin_PROGRAMS = reconstruct_weights atools
+# bin_PROGRAMS = reconstruct_weights atools
 
 noinst_PROGRAMS = \
   ts \

@@ -1,54 +1,24 @@
-AC_INIT([cdec],[2013-03-08])
-dnl AC_CONFIG_SRCDIR([])
-AM_INIT_AUTOMAKE
-AC_CONFIG_HEADERS(config.h)
+AC_PREREQ(2.65)
+AC_INIT([mr-mira], [2013-04-12])
+AM_INIT_AUTOMAKE([foreign -Wall])
+
 AC_PROG_LIBTOOL
-AC_PROG_LEX
-case $LEX in
-:) AC_MSG_ERROR([No lex (Flex, lex, etc.) program found]);;
-esac
-# CPPFLAGS="$CPPFLAGS -std=c++0x"
 AC_PROG_CC
 AC_PROG_CXX
-AC_LANG_CPLUSPLUS
+AC_PROG_INSTALL
+
 BOOST_REQUIRE([1.44])
 BOOST_PROGRAM_OPTIONS
-BOOST_SYSTEM
-BOOST_SERIALIZATION
 BOOST_TEST
-BOOST_THREADS
-AM_PATH_PYTHON
-AC_CHECK_HEADER(dlfcn.h,AC_DEFINE(HAVE_DLFCN_H))
-AC_CHECK_LIB(dl, dlopen)
+CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
+LDFLAGS="$LDFLAGS $BOOST_PROGRAM_OPTIONS_LDFLAGS"
+LIBS="$LIBS $BOOST_PROGRAM_OPTIONS_LIBS"
+
 AC_CHECK_HEADERS(zlib.h,
     AC_CHECK_LIB(z, gzread,[
         AC_DEFINE(HAVE_ZLIB,[],[Do we have zlib])
-        ZLIBS="$ZLIBS -lz"
+        LIBS="$LIBS -lz"
     ]))
-
-AC_CHECK_HEADERS(bzlib.h,
-    AC_CHECK_LIB(bz2, BZ2_bzReadOpen,[
-        AC_DEFINE(HAVE_BZLIB,[],[Do we have bzlib])
-        ZLIBS="$ZLIBS -lbz2"
-    ]))
-
-AC_CHECK_HEADERS(lzma.h,
-    AC_CHECK_LIB(lzma, lzma_code,[
-        AC_DEFINE(HAVE_XZLIB,[],[Do we have lzma])
-        ZLIBS="$ZLIBS -llzma"
-    ]))
-
-AC_ARG_ENABLE(mpi,
- [ --enable-mpi  Build MPI binaries, assumes mpi.h is present ],
- [ mpi=yes
- ])
-AM_CONDITIONAL([MPI], [test "x$mpi" = xyes])
-
-if test "x$mpi" = xyes
-then
-  AC_DEFINE([HAVE_MPI], [1], [flag for MPI])
-  LIBS="$LIBS -lboost_mpi"
-fi
 
 AM_CONDITIONAL([HAVE_METEOR], false)
 AC_ARG_WITH(meteor,
@@ -75,31 +45,18 @@ AC_ARG_WITH(cmph,
 
 if test "x$with_cmph" != 'xno'
 then
-  SAVE_CPPFLAGS="$CPPFLAGS"
-  CPPFLAGS="$CPPFLAGS -I${with_cmph}/include"
-
   AC_CHECK_HEADER(cmph.h,
                  [AC_DEFINE([HAVE_CMPH], [1], [flag for cmph perfect hashing library])],
                  [AC_MSG_ERROR([Cannot find cmph library!])])
 
+  CPPFLAGS="$CPPFLAGS -I${with_cmph}/include"
   LDFLAGS="$LDFLAGS -L${with_cmph}/lib"
   AC_CHECK_LIB(cmph, cmph_search)
   AM_CONDITIONAL([HAVE_CMPH], true)
 fi
 
-#BOOST_THREADS
-CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
-LDFLAGS="$LDFLAGS $BOOST_PROGRAM_OPTIONS_LDFLAGS $BOOST_SERIALIZATION_LDFLAGS $BOOST_SYSTEM_LDFLAGS"
-# $BOOST_THREAD_LDFLAGS"
-LIBS="$LIBS $BOOST_PROGRAM_OPTIONS_LIBS $BOOST_SERIALIZATION_LIBS $BOOST_SYSTEM_LIBS $ZLIBS"
-# $BOOST_THREAD_LIBS"
-
-AC_CHECK_HEADER(google/dense_hash_map,
-               [AC_DEFINE([HAVE_SPARSEHASH], [1], [flag for google::dense_hash_map])])
-
-AC_PROG_INSTALL
-
-CPPFLAGS="-DPIC -fPIC $CPPFLAGS -DHAVE_CONFIG_H -DKENLM_MAX_ORDER=6"
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([utils/Makefile])

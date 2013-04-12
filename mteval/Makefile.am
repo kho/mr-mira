@@ -1,6 +1,6 @@
-bin_PROGRAMS = \
-  fast_score \
-  mbr_kbest
+# bin_PROGRAMS = \
+#   fast_score \
+#   mbr_kbest
 
 noinst_PROGRAMS = \
   scorer_test
