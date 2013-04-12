@@ -1,0 +1,2 @@
+CPPFLAGS="-DNDEBUG"
+CXXFLAGS="-O2 -march=native -mtune=native -fno-omit-frame-pointer"
