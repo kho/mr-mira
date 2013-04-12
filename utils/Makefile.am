@@ -84,10 +84,10 @@ if HAVE_CMPH
   libutils_a_SOURCES += perfect_hash.cc
 endif
 
-reconstruct_weights_SOURCES = reconstruct_weights.cc
-reconstruct_weights_LDADD = libutils.a
-atools_SOURCES = atools.cc
-atools_LDADD = libutils.a
+# reconstruct_weights_SOURCES = reconstruct_weights.cc
+# reconstruct_weights_LDADD = libutils.a
+# atools_SOURCES = atools.cc
+# atools_LDADD = libutils.a
 
 phmt_SOURCES = phmt.cc
 phmt_LDADD = libutils.a $(BOOST_UNIT_TEST_FRAMEWORK_LDFLAGS) $(BOOST_UNIT_TEST_FRAMEWORK_LIBS)
