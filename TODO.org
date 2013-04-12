@@ -1,0 +1,26 @@
+* MapReduce adaptation
+*** DONE input with ref and grammar
+*** DONE output weights and translation
+*** DONE MIRA master process
+*** DONE base64 floating point number
+
+* Decoder abstraction
+*** DONE Create pipe directly inside MIRA
+*** TODO Replace {} in decoder command line with weight file path
+
+* General code cleanup
+*** TODO Gather options into a single struct
+*** TODO UpdateOracles
+*** TODO Organize optimization code
+*** TODO Clean up usage of weights, dense_weights, lambdas, old_lambdas
+*** TODO Good/Bad selection and optimizer
+*** TODO Remove unused variables
+*** TODO Descriptive optimizer name
+*** TODO Control of averaging
+*** TODO Cleaner logging (perhaps using glog)
+
+* Documentation and functionality
+*** TODO General training tutorial
+*** TODO Scripts for running locally
+*** TODO Scripts for running on TORQUE cluster
+*** TODO Scripts for running on Hadoop
