@@ -9,10 +9,10 @@
 // Simple line-based inter-process IO.
 class Messenger {
  public:
-  // Base class of line consume for customizable access to `Pull`
-  // results. For a single pull, the messenger first calls `Expect` to
-  // inform the consumer number of lines to expect. Then for each
-  // incoming line, `Notify` is call in the order the lines come.
+  // Base class for customizable access to `Pull` results. For a
+  // single pull, the messenger first calls `Expect` to inform the
+  // consumer the number of lines to expect. Then for each incoming
+  // line, `Notify` is called in the order the lines come.
   class Consumer {
    public:
     void Notify(const std::string &line) {
