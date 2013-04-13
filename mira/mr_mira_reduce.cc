@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
   tr1::unordered_map<string, double> sum_weights;
   int total_mult = 0;
 
-  string buf, msg;
+  string buf;
 
   while(getline(cin, buf)) {
     if (buf.empty()) {
@@ -27,10 +27,13 @@ int main(int argc, char** argv) {
       istringstream in(buf);
       int mult;
       in >> mult >> mult;
+      DLOG(INFO) << "mult is " << mult;
       string name;
       double weight;
-      while (in >> name >> weight)
+      while (in >> name >> weight) {
+        DLOG(INFO) << "Feature " << name << " has weight " << weight;
         sum_weights[name] += weight * mult;
+      }
       total_mult += mult;
     }
   }
