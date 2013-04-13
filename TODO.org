@@ -6,7 +6,7 @@
 
 * Decoder abstraction
 *** DONE Create pipe directly inside MIRA
-*** TODO Replace {} in decoder command line with weight file path
+*** DONE Replace {} in decoder command line with weight file path
 
 * General code cleanup
 *** TODO Gather options into a single struct
