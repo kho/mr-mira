@@ -13,6 +13,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/program_options.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <glog/logging.h>
 
 // #include "sentence_metadata.h"
 #include "mteval/scorer.h"
@@ -1048,6 +1049,9 @@ void FromDecoder(Messenger *m, vector<shared_ptr<HypothesisInfo> > *hyps) {
 
 
 int main(int argc, char** argv) {
+  FLAGS_logtostderr = 1;
+  google::InitGoogleLogging(argv[0]);
+
   // register_feature_functions();
   // SetSilent(true);  // turn off verbose decoder output
 
@@ -1530,16 +1534,16 @@ int main(int argc, char** argv) {
   // lambdas.init_vector(&dense_weights);
   // Weights::WriteToFile(os.str(), dense_weights, true, &msg);
 
-  ostringstream o;
-  o.precision(17);
+
+  cout << "-1\t" << lcount << ' ';
+  cout.precision(17);
   const int num_feats = FD::NumFeats();
   for (int i = 1; i < num_feats; ++i) {
     const double val = (i < dense_weights.size() ? dense_weights[i] : 0.0);
-    if (val == 0.0) continue;
-    o << "|||" << FD::Convert(i) << ' ' << val;
+    if (val)
+      cout << FD::Convert(i) << ' ' << val << '\t';
   }
-  cout << "-1\t"<< msg << o.str() << endl;
-  cerr << "-1\t"<< msg << o.str() << endl;
+  cout << endl;
   // SparseVector<double> x = tot;
   // x /= lcount;
   // ostringstream sa;
