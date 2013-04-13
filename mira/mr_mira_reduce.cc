@@ -40,9 +40,13 @@ int main(int argc, char** argv) {
   LOG(INFO) << "Active features: " << sum_weights.size();
 
   cout.precision(17);
+  bool first = true;
   for (tr1::unordered_map<string, double>::const_iterator it = sum_weights.begin();
-       it != sum_weights.end(); ++it)
-    cout << it->first << ' ' << it->second / total_mult << '\t';
+       it != sum_weights.end(); ++it) {
+    if (first) first = false;
+    else cout << '\t';
+    cout << it->first << ' ' << it->second / total_mult;
+  }
   cout << endl;
 
   return 0;

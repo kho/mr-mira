@@ -1535,13 +1535,13 @@ int main(int argc, char** argv) {
   // Weights::WriteToFile(os.str(), dense_weights, true, &msg);
 
 
-  cout << "-1\t" << lcount << ' ';
+  cout << "-1\t" << lcount;
   cout.precision(17);
   const int num_feats = FD::NumFeats();
   for (int i = 1; i < num_feats; ++i) {
     const double val = (i < dense_weights.size() ? dense_weights[i] : 0.0);
     if (val)
-      cout << FD::Convert(i) << ' ' << val << '\t';
+      cout << '\t' << FD::Convert(i) << ' ' << val;
   }
   cout << endl;
   // SparseVector<double> x = tot;
