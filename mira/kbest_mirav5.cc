@@ -185,7 +185,7 @@ void ShowLargestFeatures(const vector<double>& w) {
 bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
   po::options_description opts("Configuration options");
   opts.add_options()
-      ("input_weights,w",po::value<string>(),"Input feature weights file")
+      ("input_weights,w",po::value<string>(),"Input feature weights file; can be referenced as {} in decoder command")
       // ("source,i",po::value<string>(),"Source file for development set")
       ("passes,p", po::value<int>()->default_value(0), "Current pass through the training data")
       // ("reference,r",po::value<vector<string> >(), "[REQD] Reference translation(s) (tokenized text file)")
@@ -202,6 +202,7 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
       // ("k_best_size,k", po::value<int>()->default_value(250), "Size of hypothesis list to search for oracles")
       ("update_k_best,b", po::value<int>()->default_value(1), "Size of good, bad lists to perform update with")
       ("verbose", po::value<int>()->default_value(0), "Verbosity level")
+      ("pass_weights", "Pass init weights to the decoder as weight delta")
       // ("unique_k_best,u", "Unique k-best translation list")
       // ("weights_output,O",po::value<string>(),"Directory to write weights to")
       // ("output_dir,D",po::value<string>(),"Directory to place output in")
@@ -1057,6 +1058,9 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
 
   vector<string> cmd(conf["cmd"].as<vector<string> >());
+  // Replace {} with value of "input_weights"
+  for (vector<string>::iterator cit = cmd.begin(); cit != cmd.end(); ++cit)
+    if (*cit == "{}") *cit = conf["input_weights"].as<string>();
   {
     ostringstream strm;
     copy(cmd.begin(), cmd.end(), ostream_iterator<string>(strm, " "));
@@ -1187,6 +1191,10 @@ int main(int argc, char** argv) {
   ScoreP acc = SafeGetZero(type), acc_h = SafeGetZero(type), acc_f = SafeGetZero(type);
 
   SparseVector<double> lambda_delta;
+  if (conf.count("pass_weights")) {
+    LOG(INFO) << "Passing init weights as delta";
+    Weights::InitSparseVector(dense_weights, &lambda_delta);
+  }
 
   while(*in) {
     getline(*in, buf);
@@ -1419,11 +1427,12 @@ int main(int argc, char** argv) {
               temp_lambdas += (cur_constraint[u]->oracleN->features-cur_constraint[u]->features) * cur_constraint[u]->alpha * step_size;
               alpha_sum += cur_constraint[u]->alpha;
             }
-            LOG(INFO) << "Alpha sum " << alpha_sum << " " << temp_lambdas;
+            LOG(INFO) << "Alpha sum " << alpha_sum;
+            VLOG(2) << "Temp lambdas: " << temp_lambdas;
 
             lambdas += (cur_pair[1]->features) * step_size;
             lambdas -= (cur_pair[0]->features) * step_size;
-            LOG(INFO) << " Lambdas " << lambdas;
+            VLOG(2) << " Lambdas " << lambdas;
             //reload weights based on update
             dense_weights.clear();
             // weights.InitFromVector(lambdas);
