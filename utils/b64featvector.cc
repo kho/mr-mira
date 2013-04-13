@@ -1,5 +1,6 @@
 #include "b64featvector.h"
 
+#include <iostream>
 #include <sstream>
 #include <boost/scoped_array.hpp>
 #include "b64tools.h"
@@ -35,7 +36,8 @@ void DecodeFeatureVector(const string &data, SparseVector<weight_t> *vec) {
     // Decode data
   size_t b64_len = data.size(), len = b64_len / 4 * 3;
   boost::scoped_array<char> buf(new char[len]);
-  assert(B64::b64decode(reinterpret_cast<const unsigned char *>(data.data()), b64_len, buf.get(), len));
+  bool res = B64::b64decode(reinterpret_cast<const unsigned char *>(data.data()), b64_len, buf.get(), len);
+  assert(res);
   // Apply updates
   size_t cur = 0;
   while (cur < len) {

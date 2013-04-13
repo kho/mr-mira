@@ -7,9 +7,10 @@ noinst_PROGRAMS = \
   m_test \
   weights_test \
   logval_test \
-  small_vector_test
+  small_vector_test \
+  b64featvector_test
 
-TESTS = ts small_vector_test logval_test weights_test dict_test m_test
+TESTS = ts small_vector_test logval_test weights_test dict_test m_test b64featvector_test
 
 noinst_LIBRARIES = libutils.a
 
@@ -103,6 +104,8 @@ logval_test_SOURCES = logval_test.cc
 logval_test_LDADD = libutils.a $(BOOST_UNIT_TEST_FRAMEWORK_LDFLAGS) $(BOOST_UNIT_TEST_FRAMEWORK_LIBS)
 small_vector_test_SOURCES = small_vector_test.cc
 small_vector_test_LDADD = libutils.a $(BOOST_UNIT_TEST_FRAMEWORK_LDFLAGS) $(BOOST_UNIT_TEST_FRAMEWORK_LIBS)
+b64featvector_test_SOURCES = b64featvector_test.cc
+b64featvector_test_LDADD = libutils.a $(BOOST_UNIT_TEST_FRAMEWORK_LDFLAGS) $(BOOST_UNIT_TEST_FRAMEWORK_LIBS)
 
 ################################################################
 # do NOT NOT NOT add any other -I includes NO NO NO NO NO ######
