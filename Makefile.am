@@ -7,5 +7,4 @@ SUBDIRS = \
   mira
 
 ACLOCAL_AMFLAGS = -I m4
-AM_CXXFLAGS = -march=native -mtune=native -pipe
 

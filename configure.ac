@@ -10,19 +10,10 @@ AC_PROG_INSTALL
 BOOST_REQUIRE([1.44])
 BOOST_PROGRAM_OPTIONS
 BOOST_TEST
-CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
-LDFLAGS="$LDFLAGS $BOOST_PROGRAM_OPTIONS_LDFLAGS"
-LIBS="$LIBS $BOOST_PROGRAM_OPTIONS_LIBS"
 
-PKG_CHECK_MODULES([GLOG], [libglog >= 0.3])
-CPPFLAGS="$CPPFLAGS $GLOG_CFLAGS"
-LIBS="$LIBS $GLOG_LIBS"
+PKG_CHECK_MODULES([glog], [libglog >= 0.3])
 
-AC_CHECK_HEADERS(zlib.h,
-    AC_CHECK_LIB(z, gzread,[
-        AC_DEFINE(HAVE_ZLIB,[],[Do we have zlib])
-        LIBS="$LIBS -lz"
-    ]))
+AC_SEARCH_LIBS([gzread], [z], [], [AC_MSG_ERROR([Cannot find zlib!])])
 
 AM_CONDITIONAL([HAVE_METEOR], false)
 AC_ARG_WITH(meteor,
@@ -53,11 +44,15 @@ then
                  [AC_DEFINE([HAVE_CMPH], [1], [flag for cmph perfect hashing library])],
                  [AC_MSG_ERROR([Cannot find cmph library!])])
 
-  CPPFLAGS="$CPPFLAGS -I${with_cmph}/include"
-  LDFLAGS="$LDFLAGS -L${with_cmph}/lib"
+  CPPFLAGS="-I${with_cmph}/include $CPPFLAGS"
+  LDFLAGS="-L${with_cmph}/lib $LDFLAGS"
   AC_CHECK_LIB(cmph, cmph_search)
   AM_CONDITIONAL([HAVE_CMPH], true)
 fi
+
+CPPFLAGS="$BOOST_CPPFLAGS $glog_CFLAGS $CPPFLAGS"
+LDFLAGS="$BOOST_PROGRAM_OPTIONS_LDFLAGS $LDFLAGS"
+LIBS="$BOOST_PROGRAM_OPTIONS_LIBS $glog_LIBS $LIBS"
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
