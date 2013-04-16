@@ -25,4 +25,4 @@
 *** TODO Scripts for running on TORQUE cluster
 *** TODO Scripts for running on Hadoop
 
-*** TODO L1/L2 Top-K feature selection
+*** DONE L1/L2 Top-K feature selection
