@@ -12,21 +12,21 @@ Usage: $0 -m mapper -r reducer -i input_dir -o output_dir [-n] [-c] [-p] [-w] [-
 
 Poor men's MapReduce on qsub.
 
-`mapper` and `reducer` can be either a single command or a chain of
+'mapper' and 'reducer' can be either a single command or a chain of
 commands. However, note currently the script always treat the return
 value of the last command as the actual return value.
 
-`input_dir` should be a flat directory (with no sub-directories) and
+'input_dir' should be a flat directory (with no sub-directories) and
 all files inside will be treated as input to the mapper.
 
-Except when in "continue mode", `output_dir` must either not exist or
+Except when in "continue mode", 'output_dir' must either not exist or
 be empty.
 
 When in "continue mode", the reduce job is always submitted,
 regardless of whether its .success file exists or not.
 
--n    Intermediate keys are numeric (will use `LC_ALL=C sort -n` instead of `LC_ALL=C sort`)
--c    "Continue mode"; retries jobs that did not succeed according to the *.success files under `output_dir`
+-n    Intermediate keys are numeric (will use 'LC_ALL=C sort -n' instead of 'LC_ALL=C sort')
+-c    "Continue mode"; retries jobs that did not succeed according to the *.success files under 'output_dir'
 -p    Mapper is a command that uses pipe (rather than a single command)
 -w    Do not exit until the reducer job finishes
 -v    Verbose output
@@ -166,4 +166,5 @@ if $wait; then
     while qstat | grep -q "^$job\."; do
 	sleep 5
     done
+    test -f "$output/reduce.success"
 fi
