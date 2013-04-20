@@ -57,6 +57,7 @@ int fear_select;
 int hope_select;
 
 bool pseudo_doc;
+bool reorder;
 
 /*
  * begin processing functions for splitting dev set
@@ -203,6 +204,7 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
       ("update_k_best,b", po::value<int>()->default_value(1), "Size of good, bad lists to perform update with")
       ("verbose", po::value<int>()->default_value(0), "Verbosity level")
       ("pass_weights", "Pass init weights to the decoder as weight delta")
+      ("reorder", "Reorder k-best output from decoder by decreasing model score")
       // ("unique_k_best,u", "Unique k-best translation list")
       // ("weights_output,O",po::value<string>(),"Directory to write weights to")
       // ("output_dir,D",po::value<string>(),"Directory to place output in")
@@ -1043,9 +1045,18 @@ class HiPusher : public Messenger::Consumer {
   vector<shared_ptr<HypothesisInfo> > *hyps_;
 };
 
-void FromDecoder(Messenger *m, vector<shared_ptr<HypothesisInfo> > *hyps) {
+void FromDecoder(Messenger *m, vector<shared_ptr<HypothesisInfo> > *hyps, bool reorder) {
   HiPusher c(hyps);
   m->Pull(&c);
+  if (reorder) {
+    // Compute model scores based on current weight
+    for (size_t i = 0; i != hyps->size(); ++i) {
+      HypothesisInfo &hi = *(*hyps)[i];
+      hi.mt_metric = hi.features.dot(dense_weights_g);
+    }
+    // Sort hyptheses in decreasing order of hypothesis score
+    sort(hyps->begin(), hyps->end(), HypothesisCompareB);
+  }
 }
 
 
@@ -1094,6 +1105,7 @@ int main(int argc, char** argv) {
     mt_metric_scale = 1;
   }
   sent_approx = false;
+  reorder = conf.count("reorder");
 
   // const string weights_dir = conf["weights_output"].as<string>();
   // const string output_dir = conf["output_dir"].as<string>();
@@ -1200,18 +1212,6 @@ int main(int argc, char** argv) {
     getline(*in, buf);
     if (buf.empty()) continue;
 
-    InputRecord sent(buf);
-
-    // Feed input to the decoder
-    ToDecoder(sent, lambda_delta, &messenger);
-
-    // Collect output from the decoder
-    vector<shared_ptr<HypothesisInfo> > all_hyps;
-    FromDecoder(&messenger, &all_hyps);
-
-    cur_sent = all_hyps.front()->sent_id;
-
-    LOG(INFO) << "SENT: " << cur_sent;
     //TODO: allow batch updating
     //dense_weights.clear();
     //weights.InitFromVector(lambdas);
@@ -1222,6 +1222,18 @@ int main(int argc, char** argv) {
 
     // Save lambdas for computing delta at the end
     lambda_delta = lambdas;
+
+    // Feed input to the decoder
+    InputRecord sent(buf);
+    ToDecoder(sent, lambda_delta, &messenger);
+
+    // Collect output from the decoder
+    vector<shared_ptr<HypothesisInfo> > all_hyps;
+    FromDecoder(&messenger, &all_hyps, reorder);
+
+    cur_sent = all_hyps.front()->sent_id;
+
+    LOG(INFO) << "SENT: " << cur_sent;
 
     ScorerP sent_scorer = SentenceScorer::CreateSentenceScorer(type, sent.refs);
 
