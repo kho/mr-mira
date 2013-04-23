@@ -267,17 +267,25 @@ class InputRecord {
   vector<vector<WordID> > refs;
 
  private:
-  // input: sid\tsrc\tref\tpsg
+  // input: src\tref\tpsg
   void Read(const string &line) {
-    grammar = line;
-    vector<string> in_split;
-    split_in(grammar, in_split);
-    src = in_split[0];
-    splitstring s(in_split[1].c_str());
+    size_t first_tab = line.find('\t');
+    LOG_IF(FATAL, first_tab == string::npos) << "No reference given in input: " << line;
+    src = line.substr(0, first_tab);
+    size_t second_tab = line.find('\t', first_tab + 1);
+    if (second_tab != string::npos)     // With rest
+      grammar = line.substr(second_tab + 1);
+    splitstring s(line.substr(first_tab + 1,
+                              second_tab == string::npos ? string::npos :
+                              second_tab - first_tab - 1).c_str());
     vector<string> fields = s.split('|');
     refs.resize(fields.size());
-    for (size_t i = 0; i < fields.size(); ++i)
+    DLOG(INFO) << "SRC: |" << src << "|";
+    for (size_t i = 0; i < fields.size(); ++i) {
       TD::ConvertSentence(fields[i], &refs[i]);
+      DLOG(INFO) << "REF #" << i << ": |" << fields[i] << "|";
+    }
+    DLOG(INFO) << "GRAMMAR: |" << grammar << "|";
   }
 };
 
@@ -1220,12 +1228,12 @@ int main(int argc, char** argv) {
     lambdas.init_vector(&dense_weights);
     dense_weights_g = dense_weights;
 
-    // Save lambdas for computing delta at the end
-    lambda_delta = lambdas;
-
     // Feed input to the decoder
     InputRecord sent(buf);
     ToDecoder(sent, lambda_delta, &messenger);
+
+    // Save lambdas for computing delta at the end
+    lambda_delta = lambdas;
 
     // Collect output from the decoder
     vector<shared_ptr<HypothesisInfo> > all_hyps;
