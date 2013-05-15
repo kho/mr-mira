@@ -15,6 +15,7 @@ void InitCommandLine(int argc, char** argv, po::variables_map* conf) {
   opts.add_options()
       ("top_k,k", po::value<int>(), "Number of features to keep")
       ("cutoff,c", po::value<double>(), "Cutoff for features to keep")
+      ("combiner", "Run in combiner mode")
       ("help,h", "Help");
   po::options_description dcmdline_options;
   dcmdline_options.add(opts);
@@ -52,7 +53,8 @@ int main(int argc, char** argv) {
 
   po::variables_map conf;
   InitCommandLine(argc, argv, &conf);
-  bool regularize = conf.count("top_k") || conf.count("cutoff");
+  const bool regularize = conf.count("top_k") || conf.count("cutoff");
+  const bool combiner = conf.count("combiner");
   int k = conf.count("top_k") ? conf["top_k"].as<int>() : 0;
   double c = conf.count("cutoff") ? conf["cutoff"].as<double>() : 0;
 
@@ -96,7 +98,14 @@ int main(int argc, char** argv) {
   bool first = true;
   cout.precision(17);
 
-  if (regularize) {
+  if (combiner) {
+    cout << "-1\t" << total_mult;
+    for (tr1::unordered_map<string, double>::const_iterator it = sum_weights.begin();
+         it != sum_weights.end(); ++it) {
+      cout << ' ' << it->first << ' ' << it->second / total_mult;
+    }
+    active_count = sum_weights.size();
+  } else if (regularize) {
     // After processing all input, perform feature selection
 
     // Compute l2 norm of each feature across shards and sort feature by it (by inserting to set)
