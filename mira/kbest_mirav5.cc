@@ -1239,6 +1239,11 @@ int main(int argc, char** argv) {
     vector<shared_ptr<HypothesisInfo> > all_hyps;
     FromDecoder(&messenger, &all_hyps, reorder);
 
+    if (all_hyps.empty()) {
+      LOG(WARNING) << "Received 0 hypothesis from decoder";
+      continue;
+    }
+
     cur_sent = all_hyps.front()->sent_id;
 
     LOG(INFO) << "SENT: " << cur_sent;
