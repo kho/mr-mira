@@ -35,7 +35,7 @@ typedef pair<string, double> FeatureNorm;
 struct compare
 {
   bool operator ()(const FeatureNorm &a, const FeatureNorm &b) {
-    return a.second > b.second;
+    return a.second >= b.second;
   }
 };
 
