@@ -319,6 +319,14 @@ class FastSparseVector {
       get_or_create_bin(it->first) += it->second * scalar;
     }
   }
+   inline FastSparseVector& operator*=(const FastSparseVector& other) {
+    if (empty()) { *this = other; return *this; }
+    const typename FastSparseVector::const_iterator end = other.end();
+    for (typename FastSparseVector::const_iterator it = other.begin(); it != end; ++it) {
+      get_or_create_bin(it->first) *= it->second;
+    }
+    return *this;
+  }
   inline FastSparseVector& operator-=(const FastSparseVector& other) {
     const typename FastSparseVector::const_iterator end = other.end();
     for (typename FastSparseVector::const_iterator it = other.begin(); it != end; ++it) {
@@ -348,6 +356,27 @@ class FastSparseVector {
     }
     return *this;
   }
+
+ inline FastSparseVector& exponent(const T& scalar) {
+   if (is_remote_) {
+     const typename SPARSE_HASH_MAP<unsigned, T>::iterator end = data_.rbmap->end();
+     for (typename SPARSE_HASH_MAP<unsigned, T>::iterator it = data_.rbmap->begin(); it != end; ++it)
+       {
+	 it->second = pow(it->second, scalar);
+	 if(it->second == 0) it->second = 0.0001;
+       }
+   } else {
+     for (int i = 0; i < local_size_; ++i)
+       {
+	 data_.local[i].second() = pow( data_.local[i].second() , scalar);
+	 if( data_.local[i].second() ==0)   data_.local[i].second()=0.0001;
+       }
+   }
+   return *this;
+ }
+
+
+
   FastSparseVector<T> erase_zeros(const T& EPSILON = 1e-4) const {
     FastSparseVector<T> o;
     for (const_iterator it = begin(); it != end(); ++it) {
