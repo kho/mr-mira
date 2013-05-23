@@ -58,7 +58,7 @@ int hope_select;
 
 bool pseudo_doc;
 bool reorder;
-
+bool adaptive;
 /*
  * begin processing functions for splitting dev set
  */
@@ -200,6 +200,7 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
       ("approx_score,a", "Use smoothed sentence-level BLEU score for approximate scoring")
       // ("no_reweight,d","Do not reweight forest for cutting plane")
       ("no_select,n", "Do not use selection heuristic")
+      ("adaptive,A", po::value<double>()->default_value(0.01), "Use per-feature adaptive learning rate" )
       // ("k_best_size,k", po::value<int>()->default_value(250), "Size of hypothesis list to search for oracles")
       ("update_k_best,b", po::value<int>()->default_value(1), "Size of good, bad lists to perform update with")
       ("verbose", po::value<int>()->default_value(0), "Verbosity level")
@@ -1102,6 +1103,9 @@ int main(int argc, char** argv) {
   hope_select = conf["hope"].as<int>();
   mt_metric_scale = conf["mt_metric_scale"].as<double>();
   approx_score = conf.count("approx_score");
+  adaptive = conf.count("adaptive");
+  const double sigma_mix = conf["adaptive"].as<double>();
+
   // no_reweight = conf.count("no_reweight");
   no_select = conf.count("no_select");
   update_list_size = conf["update_k_best"].as<int>();
@@ -1166,6 +1170,8 @@ int main(int argc, char** argv) {
 
   vector<weight_t> dense_weights;
   SparseVector<weight_t> lambdas;
+  SparseVector<double> sigmas;
+
   Weights::InitFromFile(conf["input_weights"].as<string>(), &dense_weights);
   Weights::InitSparseVector(dense_weights, &lambdas);
 
@@ -1303,8 +1309,22 @@ int main(int argc, char** argv) {
       //double step_size = loss / diff.l2norm_sq();
       LOG(INFO) << loss << " " << delta << " " << diff;
       if (delta > max_step_size) delta = max_step_size;
-      lambdas += (cur_good.features * delta);
-      lambdas -= (cur_bad.features * delta);
+
+      if (adaptive) {
+	SparseVector<double> diff_sq = diff;
+	diff_sq.exponent(2);
+	sigmas += (diff_sq * sigma_mix);
+	//cerr << "DQ: " << diff_sq << endl << cur_bad.features << endl << cur_good.features << endl;
+	SparseVector<double> tmp = sigmas;
+	tmp.exponent(-0.5);
+	tmp *= delta;
+	lambdas += diff * tmp;
+      }
+      else {
+	//lambdas += diff * delta;
+	lambdas += (cur_good.features * delta);
+	lambdas -= (cur_bad.features * delta);
+      }
       //LOG(INFO) << "L: " << lambdas;
       //	  }
       //	  }
