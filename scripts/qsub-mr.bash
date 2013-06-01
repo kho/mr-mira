@@ -44,9 +44,9 @@ function empty_dir {
 }
 
 function check_opts {
-    ([ -d "$input" ] || { echo "Input does not exist or is not a directory." 1>&2; false; }) \
-	&& ($continue || [ ! -e "$output" ] || empty_dir "$output" || { echo "Non-empty output already exists." 1>&2; false; }) \
-	&& (non_empty_dir "$input" || { echo "Input dir is empty." 1>&2; false; })
+    ([ -d "$input" ] || { echo "Input does not exist or is not a directory: $input" 1>&2; false; }) \
+	&& ($continue || [ ! -e "$output" ] || empty_dir "$output" || { echo "Non-empty output already exists: $output" 1>&2; false; }) \
+	&& (non_empty_dir "$input" || { echo "Input dir is empty: $input" 1>&2; false; })
 }
 
 # Must have qsub
@@ -104,6 +104,7 @@ check_opts || exit 1
 
 mkdir -p "$output"
 
+short_output="$output"
 input=`readlink -f "$input"`
 output=`readlink -f "$output"`
 
@@ -138,7 +139,7 @@ EOF`
 	echo "================================================================================" 1>&2
 	echo "$cmd" 1>&2
     fi
-    job=`echo "$cmd" | qsub -N map.$bn -o /dev/null -e "$output/map.$bn.err" "$@" | cut -f1 -d.`
+    job=`echo "$cmd" | qsub -N "$short_output.map.$bn" -o /dev/null -e "$output/map.$bn.err" "$@" | cut -f1 -d.`
     afterok="$afterok:$job"
     sleep 0.01
 done
@@ -158,7 +159,7 @@ if $verbose; then
     echo "================================================================================" 1>&2
     echo "$cmd" 1>&2
 fi
-job=`echo "$cmd" | qsub -N reduce -o /dev/null -e "$output/reduce.err" -W depend=afterok$afterok "$@"`
+job=`echo "$cmd" | qsub -N "$short_output.reduce" -o /dev/null -e "$output/reduce.err" -W depend=afterok$afterok "$@"`
 echo "$job"
 
 if $wait; then
