@@ -200,7 +200,7 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
       ("approx_score,a", "Use smoothed sentence-level BLEU score for approximate scoring")
       // ("no_reweight,d","Do not reweight forest for cutting plane")
       ("no_select,n", "Do not use selection heuristic")
-      ("adaptive,A", po::value<double>()->default_value(0.01), "Use per-feature adaptive learning rate" )
+      ("adaptive,A", po::value<double>(), "Use per-feature adaptive learning rate" )
       // ("k_best_size,k", po::value<int>()->default_value(250), "Size of hypothesis list to search for oracles")
       ("update_k_best,b", po::value<int>()->default_value(1), "Size of good, bad lists to perform update with")
       ("verbose", po::value<int>()->default_value(0), "Verbosity level")
@@ -209,7 +209,7 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
       // ("unique_k_best,u", "Unique k-best translation list")
       // ("weights_output,O",po::value<string>(),"Directory to write weights to")
       // ("output_dir,D",po::value<string>(),"Directory to place output in")
-      // ("pseudo_doc", "Use pseudo doc score approximation")
+    ("pseudo_doc", "Use pseudo doc score approximation")
       // ("decoder_config,c",po::value<string>(),"Decoder configuration file")
       ;
 
@@ -286,7 +286,7 @@ class InputRecord {
       TD::ConvertSentence(fields[i], &refs[i]);
       DLOG(INFO) << "REF #" << i << ": |" << fields[i] << "|";
     }
-    DLOG(INFO) << "GRAMMAR: |" << grammar << "|";
+//    DLOG(INFO) << "GRAMMAR: |" << grammar << "|";
   }
 };
 
@@ -1104,13 +1104,16 @@ int main(int argc, char** argv) {
   mt_metric_scale = conf["mt_metric_scale"].as<double>();
   approx_score = conf.count("approx_score");
   adaptive = conf.count("adaptive");
-  const double sigma_mix = conf["adaptive"].as<double>();
-
+  double sigma_mix;// = conf["adaptive"].as<double>();
+  if(adaptive) {
+        sigma_mix = conf["adaptive"].as<double>();
+	LOG(INFO) << "adaptive ";
+  }
   // no_reweight = conf.count("no_reweight");
   no_select = conf.count("no_select");
   update_list_size = conf["update_k_best"].as<int>();
   // unique_kbest = conf.count("unique_k_best");
-  // pseudo_doc = conf.count("pseudo_doc");
+  pseudo_doc = conf.count("pseudo_doc");
   pseudo_doc = true;
   if (pseudo_doc && mt_metric_scale != 1) {
     LOG(INFO) << "pseudo_doc enabled; forcing mt_metric_scale to 1";
