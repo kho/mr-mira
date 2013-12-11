@@ -14,7 +14,8 @@ Poor men's MapReduce on qsub.
 
 'mapper' and 'reducer' can be either a single command or a chain of
 commands. However, note currently the script always treat the return
-value of the last command as the actual return value.
+value of the last command as the actual return value. 'reducer' may
+also be 'NONE', in which case no reduction will be run.
 
 'input_dir' should be a flat directory (with no sub-directories) and
 all files inside will be treated as input to the mapper.
@@ -132,7 +133,7 @@ for i in "$input"/*; do
     cmd=`cat <<EOF
 #!/bin/bash
 set -o pipefail
-{ $cmd | LC_ALL=C $sort | gzip - > $qo; } && touch $qs
+{ $cmd | gzip - > $qo; } && touch $qs
 test -e $qs
 EOF`
     if $verbose; then
@@ -144,23 +145,25 @@ EOF`
     sleep 0.01
 done
 
-# Make sure old reduce result no longer exists
-rm -f "$output/reduce.success"
-# Submit the reducer job
-qo=`printf %q "$output/reduce.out.gz"`
-qs=`printf %q "$output/reduce.success"`
-cmd=`cat <<EOF
+if [ "$reducer" != NONE ]; then
+    # Make sure old reduce result no longer exists
+    rm -f "$output/reduce.success"
+    # Submit the reducer job
+    qo=`printf %q "$output/reduce.out.gz"`
+    qs=`printf %q "$output/reduce.success"`
+    cmd=`cat <<EOF
 #!/bin/bash
 set -o pipefail
 { zcat ${mos[@]} | LC_ALL=C $sort | $reducer | gzip - > $qo; } && touch $qs
 test -e $qs"
 EOF`
-if $verbose; then
-    echo "================================================================================" 1>&2
-    echo "$cmd" 1>&2
+    if $verbose; then
+	echo "================================================================================" 1>&2
+	echo "$cmd" 1>&2
+    fi
+    job=`echo "$cmd" | qsub -N "$short_output.reduce" -o /dev/null -e "$output/reduce.err" -W depend=afterok$afterok "$@"`
+    echo "$job"
 fi
-job=`echo "$cmd" | qsub -N "$short_output.reduce" -o /dev/null -e "$output/reduce.err" -W depend=afterok$afterok "$@"`
-echo "$job"
 
 if $wait; then
     job=`echo "$job" | cut -f1 -d.`
