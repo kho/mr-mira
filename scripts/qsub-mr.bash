@@ -155,7 +155,7 @@ if [ "$reducer" != NONE ]; then
 #!/bin/bash
 set -o pipefail
 { zcat ${mos[@]} | LC_ALL=C $sort | $reducer | gzip - > $qo; } && touch $qs
-test -e $qs"
+test -e $qs
 EOF`
     if $verbose; then
 	echo "================================================================================" 1>&2
