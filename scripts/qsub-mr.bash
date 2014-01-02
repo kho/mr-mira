@@ -168,7 +168,7 @@ fi
 if $wait; then
     job=`echo "$job" | cut -f1 -d.`
     while qstat | grep -q "^$job\."; do
-	sleep 5
+	sleep 15
     done
     test -f "$output/reduce.success"
 fi
