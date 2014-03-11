@@ -13,7 +13,7 @@ function log {
 
 set -e
 
-QSUB_OPTS=(-q wide -l pmem=4g,walltime=2:00:00)
+QSUB_OPTS=(-q wide -l pmem=7g,walltime=2:00:00)
 
 SUBMIT=`which qsub-mr.bash`
 MAPPER=`which kbest_mirav5`
@@ -51,7 +51,7 @@ for i in `seq $ITERS`; do
 	-r "$REDUCER" \
 	-i "$INPUT" \
 	-o "$WORKDIR" \
-	-w -v -c -- "${QSUB_OPTS[@]}"
+	-w -c -- "${QSUB_OPTS[@]}"
 
     n=`zcat "$WORKDIR/reduce.out.gz" | wc -l`
     n=$(($n-1))
