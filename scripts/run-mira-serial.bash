@@ -44,7 +44,7 @@ for i in `seq $ITERS`; do
     LAST_WEIGHTS="$OUTPUT/`printf %04d $LAST_ITER`/weights.out"
     LAST_WEIGHTS=`readlink -f "$LAST_WEIGHTS"`
     mkdir -p "$WORKDIR"
-    sort -R "$INPUT" | \
+    sort --random-source=/dev/zero -R "$INPUT" | \
 	"$MAPPER" -w "$LAST_WEIGHTS" -m "$METRIC" -s 1000 -a -b 1000 -o 2 -p 0 -- "$@" 2> "$WORKDIR/map.log" | \
 	LC_ALL=C sort | \
 	"$REDUCER" 2> "$WORKDIR/reduce.log" | gzip - > "$WORKDIR/reduce.out.gz"
