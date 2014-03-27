@@ -29,7 +29,7 @@ regardless of whether its .success file exists or not.
 -n    Intermediate keys are numeric (will use 'LC_ALL=C sort -n' instead of 'LC_ALL=C sort')
 -c    "Continue mode"; retries jobs that did not succeed according to the *.success files under 'output_dir'
 -p    Mapper is a command that uses pipe (rather than a single command)
--w    Do not exit until the reducer job finishes
+-w    Do not exit until all jobs finish
 -v    Verbose output
 EOF
 }
@@ -97,7 +97,7 @@ if $verbose; then
 	echo "Mapper uses pipe" 1>&2
     fi
     if $wait; then
-	echo "Will wait until reducer job finishes" 1>&2
+	echo "Will wait until all jobs finish" 1>&2
     fi
 fi
 
@@ -108,6 +108,8 @@ mkdir -p "$output"
 short_output="$(basename $(dirname $output))/$(basename $output)"
 input=`readlink -f "$input"`
 output=`readlink -f "$output"`
+
+alljobs=()
 
 # Submit mapper jobs
 mos=()
@@ -141,6 +143,7 @@ EOF`
 	echo "$cmd" 1>&2
     fi
     job=`echo "$cmd" | qsub -N "$short_output.map.$bn" -o /dev/null -e "$output/map.$bn.err" "$@" | cut -f1 -d.`
+    alljobs+=("$job")
     afterok="$afterok:$job"
     sleep 0.01
 done
@@ -161,14 +164,24 @@ EOF`
 	echo "================================================================================" 1>&2
 	echo "$cmd" 1>&2
     fi
-    job=`echo "$cmd" | qsub -N "$short_output.reduce" -o /dev/null -e "$output/reduce.err" -W depend=afterok$afterok "$@"`
-    echo "$job"
+    job=`echo "$cmd" | qsub -N "$short_output.reduce" -o /dev/null -e "$output/reduce.err" -W depend=afterok$afterok "$@" | cut -f1 -d.`
+    alljobs+=("$job")
+else
+    # There is no reduce job so reduce is immediately successful.
+    touch "$output/reduce.success"
 fi
 
 if $wait; then
-    job=`echo "$job" | cut -f1 -d.`
-    while qstat | grep -q "^$job\."; do
-	sleep 15
+    if $verbose; then
+	echo "waiting for ${alljobs[@]} to finish." 1>&2
+    fi
+    for job in ${alljobs[@]}; do
+	while qstat | grep -q "^$job\."; do
+	    sleep 15
+	done
+	if $verbose; then
+	    echo "$job finished." 1>&2
+	fi
     done
     test -f "$output/reduce.success"
 fi
