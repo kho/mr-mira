@@ -8,7 +8,7 @@ set -e
 
 function usage {
     cat <<EOF
-Usage: $0 -m mapper -r reducer -i input_dir -o output_dir [-n] [-c] [-p] [-w] [-v] [-- QSUB_OPTS]
+Usage: $0 -m mapper -r reducer -i input_dir -o output_dir [-n] [-c] [-p] [-w] [-v] [-k] [-- QSUB_OPTS]
 
 Poor men's MapReduce on qsub.
 
@@ -31,6 +31,7 @@ regardless of whether its .success file exists or not.
 -p    Mapper is a command that uses pipe (rather than a single command)
 -w    Do not exit until all jobs finish
 -v    Verbose output
+-k    Keep mapper output after the reducer succeeds
 EOF
 }
 
@@ -62,8 +63,9 @@ continue=false
 pipe=false
 wait=false
 verbose=false
+keep=false
 
-while getopts :m:r:i:o:ncpwvh name; do
+while getopts :m:r:i:o:ncpwvkh name; do
     case $name in
 	m) mapper=$OPTARG;;
 	r) reducer=$OPTARG;;
@@ -74,6 +76,7 @@ while getopts :m:r:i:o:ncpwvh name; do
 	p) pipe=true;;
 	w) wait=true;;
 	v) verbose=true;;
+	k) keep=true;;
 	h) usage; exit 2;;
 	?) echo "$0: unrecognized option -$OPTARG"; exit 2;;
     esac
@@ -118,6 +121,7 @@ for i in "$input"/*; do
     bn=`basename "$i"`
     qi=`printf %q "$i"`
     qo=`printf %q "$output/map.$bn.out.gz"`
+    qe=`printf %q "$output/map.$bn.err"`
     qs=`printf %q "$output/map.$bn.success"`
     mos+=("$qo")
     # No need to test if we are in continue mode.
@@ -135,14 +139,14 @@ for i in "$input"/*; do
     cmd=`cat <<EOF
 #!/bin/bash
 set -o pipefail
-{ $cmd | gzip - > $qo; } && touch $qs
+{ $cmd 2> $qe | gzip - > $qo; } && touch $qs
 test -e $qs
 EOF`
     if $verbose; then
 	echo "================================================================================" 1>&2
 	echo "$cmd" 1>&2
     fi
-    job=`echo "$cmd" | qsub -N "$short_output.map.$bn" -o /dev/null -e "$output/map.$bn.err" "$@" | cut -f1 -d.`
+    job=`echo "$cmd" | qsub -N "$short_output.map.$bn" -o /dev/null -e /dev/null "$@" | cut -f1 -d.`
     alljobs+=("$job")
     afterok="$afterok:$job"
     sleep 0.01
@@ -152,12 +156,14 @@ if [ "$reducer" != NONE ]; then
     # Make sure old reduce result no longer exists
     rm -f "$output/reduce.success"
     # Submit the reducer job
+    qd=`printf %q "$output"`
     qo=`printf %q "$output/reduce.out.gz"`
     qs=`printf %q "$output/reduce.success"`
     cmd=`cat <<EOF
 #!/bin/bash
 set -o pipefail
 { zcat ${mos[@]} | LC_ALL=C $sort | $reducer | gzip - > $qo; } && touch $qs
+if ! $keep; then find $qd -name 'map.*' -exec rm {} \\; ; fi
 test -e $qs
 EOF`
     if $verbose; then
