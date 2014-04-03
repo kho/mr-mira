@@ -16,4 +16,3 @@ kbest_feeder_LDADD = ../utils/libutils.a
 kbest_indexer_SOURCES = kbest_indexer.cc
 
 ipc_test_SOURCES = ipc_test.cc ipc.cc ipc.h
-

@@ -2,7 +2,7 @@
 
 function usage {
     cat <<EOF
-Usage: INPUT=x OUTPUT=y [INIT_WEIGHTS=z ITERS=50 METRIC=ibm_bleu MEM=4g MAXTRY=5] $0 ... decoder command ...
+Usage: INPUT=x OUTPUT=y [INIT_WEIGHTS=z ITERS=50 METRIC=ibm_bleu MEM=4g MAXTRY=5 MIRA_OPTS=''] $0 ... decoder command ...
 Use ITERS="x y" to restart from previous runs, otherwise INIT_WEIGHTS is required.
 EOF
 }
@@ -18,14 +18,14 @@ SUBMIT=`which qsub-mr.bash`
 MAPPER=`which kbest_mirav5`
 REDUCER=`which mr_mira_reduce`
 
-[ "x$INPUT" != x ] || { log "Set INPUT"; exit 1; }
-[ "x$OUTPUT" != x ] || { log "Set OUTPUT"; exit 1; }
+[ "x$INPUT" != x ] || { log "Set INPUT"; usage; exit 1; }
+[ "x$OUTPUT" != x ] || { log "Set OUTPUT"; usage; exit 1; }
 [ "x$MEM" != x ] || MEM=4g
 [ "x$MAXTRY" != x ] || MAXTRY=5
 [ "x$ITERS" != x ] || ITERS=50
 [ "x$METRIC" != x ] || METRIC=ibm_bleu
 if ! echo "$ITERS" | grep -q ' '; then
-    [ "x$INIT_WEIGHTS" != x ] || { log "Set INIT_WEIGHTS"; exit 1; }
+    [ "x$INIT_WEIGHTS" != x ] || { log "Set INIT_WEIGHTS"; usage; exit 1; }
 fi
 
 log "INPUT = $INPUT"
@@ -52,7 +52,7 @@ for i in `seq $ITERS`; do
     fi
     for j in $(seq "$MAXTRY"); do
 	if "$SUBMIT" \
-	    -m "$MAPPER -w $LAST_WEIGHTS -m $METRIC -s 1000 -a -b 1000 -o 2 -p 0 -- $*" \
+	    -m "$MAPPER -w $LAST_WEIGHTS -m $METRIC -s 1000 -a -b 1000 -o 2 -p 0 $MIRA_OPTS -- $*" \
 	    -r "$REDUCER" \
 	    -i "$INPUT" \
 	    -o "$WORKDIR" \

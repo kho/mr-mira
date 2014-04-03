@@ -111,4 +111,3 @@ b64featvector_test_LDADD = libutils.a $(BOOST_UNIT_TEST_FRAMEWORK_LDFLAGS) $(BOO
 # do NOT NOT NOT add any other -I includes NO NO NO NO NO ######
 AM_CPPFLAGS = -DBOOST_TEST_DYN_LINK -W -Wall -I. -I$(top_srcdir) -DTEST_DATA=\"$(top_srcdir)/utils/test_data\"
 ################################################################
-

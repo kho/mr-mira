@@ -2,7 +2,7 @@
 
 function usage {
     cat <<EOF
-Usage: INPUT=x OUTPUT=y INIT_WEIGHTS=z [ITERS=w METRIC=v] $0 ... decoder command ...
+Usage: INPUT=x OUTPUT=y INIT_WEIGHTS=z [ITERS=w METRIC=v MIRA_OPTS=u] $0 ... decoder command ...
 EOF
 }
 
@@ -45,7 +45,7 @@ for i in `seq $ITERS`; do
     LAST_WEIGHTS=`readlink -f "$LAST_WEIGHTS"`
     mkdir -p "$WORKDIR"
     sort --random-source=/dev/zero -R "$INPUT" | \
-	"$MAPPER" -w "$LAST_WEIGHTS" -m "$METRIC" -s 1000 -a -b 1000 -o 2 -p 0 -- "$@" 2> "$WORKDIR/map.log" | \
+	"$MAPPER" -w "$LAST_WEIGHTS" -m "$METRIC" -s 1000 -a -b 1000 -o 2 -p 0 ${MIRA_OPTS} -- "$@" 2> "$WORKDIR/map.log" | \
 	LC_ALL=C sort | \
 	"$REDUCER" 2> "$WORKDIR/reduce.log" | gzip - > "$WORKDIR/reduce.out.gz"
     n=`zcat "$WORKDIR/reduce.out.gz" | wc -l`

@@ -10,6 +10,7 @@
 #include <string>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/regex.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/program_options.hpp>
 #include <boost/program_options/variables_map.hpp>
@@ -191,7 +192,11 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
       "pass_weights", "Pass init weights to the decoder as weight delta")(
       "reorder",
       "Reorder k-best output from decoder by decreasing model score")(
-      "pseudo_doc", "Use pseudo doc score approximation");
+      "pseudo_doc", "Use pseudo doc score approximation")(
+      "feat_name", po::value<string>()->default_value("."),
+      "Regex pattern of feature names; only features matching this pattern are "
+      "considered for optimization")("invert,v",
+                                     "Invert matching on feature names");
 
   // Decoder command
   po::options_description hidden("Hidden options");
@@ -285,7 +290,9 @@ struct HypothesisInfo {
   SparseVector<double> oracle_feat_diff;
   shared_ptr<HypothesisInfo> oracleN;
 
-  static shared_ptr<HypothesisInfo> FromRaw(const string& line) {
+  static shared_ptr<HypothesisInfo> FromRaw(const string& line,
+                                            const boost::regex& pat,
+                                            bool invert) {
     shared_ptr<HypothesisInfo> ret(new HypothesisInfo);
     // make alpha zero
     ret->alpha = 0;
@@ -306,7 +313,7 @@ struct HypothesisInfo {
       ret->hyp.push_back(TD::Convert(word));
     // Features
     bufin >> word;
-    DecodeFeatureVector(word, &(ret->features));
+    DecodeFeatureVector(word, pat, invert, &(ret->features));
     return ret;
   }
 };
@@ -795,21 +802,26 @@ void ToDecoder(const InputRecord& input, const SparseVector<weight_t>& delta,
 // Pushes new HypothesisInfo
 class HiPusher : public Messenger::Consumer {
  public:
-  HiPusher(vector<shared_ptr<HypothesisInfo> >* hyps) : hyps_(hyps) {
+  HiPusher(const boost::regex& pat, bool invert,
+           vector<shared_ptr<HypothesisInfo> >* hyps)
+      : pat_(pat), invert_(invert), hyps_(hyps) {
     hyps_->clear();
   }
 
  private:
   void expect_(int n) { hyps_->reserve(n); }
   void action_(const string& line) {
-    hyps_->push_back(HypothesisInfo::FromRaw(line));
+    hyps_->push_back(HypothesisInfo::FromRaw(line, pat_, invert_));
   }
+
+  const boost::regex& pat_;
+  bool invert_;
   vector<shared_ptr<HypothesisInfo> >* hyps_;
 };
 
-void FromDecoder(Messenger* m, vector<shared_ptr<HypothesisInfo> >* hyps,
-                 bool reorder) {
-  HiPusher c(hyps);
+void FromDecoder(Messenger* m, const boost::regex& pat, bool invert,
+                 vector<shared_ptr<HypothesisInfo> >* hyps, bool reorder) {
+  HiPusher c(pat, invert, hyps);
   m->Pull(&c);
   if (reorder) {
     // Compute model scores based on current weight
@@ -829,6 +841,10 @@ int main(int argc, char** argv) {
   FLAGS_logtostderr = 1;
   FLAGS_v = conf["verbose"].as<int>();
   google::InitGoogleLogging(argv[0]);
+
+  // Feature name pattern.
+  boost::regex feat_name_pat(conf["feat_name"].as<string>());
+  bool feat_name_invert = conf.count("invert");
 
   vector<string> cmd(conf["cmd"].as<vector<string> >());
   // Replace {} with value of "input_weights"
@@ -1003,7 +1019,8 @@ int main(int argc, char** argv) {
 
     // Collect output from the decoder
     vector<shared_ptr<HypothesisInfo> > all_hyps;
-    FromDecoder(&messenger, &all_hyps, reorder);
+    FromDecoder(&messenger, feat_name_pat, feat_name_invert, &all_hyps,
+                reorder);
 
     if (all_hyps.empty()) {
       LOG(WARNING) << "Received 0 hypothesis from decoder";
