@@ -164,48 +164,34 @@ bool InitCommandLine(int argc, char** argv, po::variables_map* conf) {
   po::options_description opts("Configuration options");
   opts.add_options()(
       "input_weights,w", po::value<string>(),
-      "Input feature weights file; can be referenced as {} in decoder command")
-      // ("source,i",po::value<string>(),"Source file for development set")
-      ("passes,p", po::value<int>()->default_value(0),
-       "Current pass through the training data")
-      // ("reference,r",po::value<vector<string> >(), "[REQD] Reference
-      // translation(s) (tokenized text file)")
-      ("mt_metric,m", po::value<string>()->default_value("ibm_bleu"),
-       "Scoring metric (ibm_bleu, nist_bleu, koehn_bleu, ter, combi)")(
-          "optimizer,o", po::value<int>()->default_value(1),
-          "Optimizer (sgd=1, mira 1-fear=2, full mira w/ cutting plane=3, full "
-          "mira w/ nbest list=5, local update=4)")(
-          "fear,f", po::value<int>()->default_value(1),
-          "Fear selection (model-cost=1, max-cost=2, pred-base=3)")(
-          "hope,h", po::value<int>()->default_value(1),
-          "Hope selection (model+cost=1, max-cost=2, local-cost=3)")(
-          "max_step_size,C", po::value<double>()->default_value(0.01),
-          "regularization strength (C)")
-      // ("random_seed,S", po::value<uint32_t>(), "Random seed (if not
-      // specified, /dev/random will be used)")
-      ("mt_metric_scale,s", po::value<double>()->default_value(1.0),
-       "Amount to scale MT loss function by")(
-          "approx_score,a",
-          "Use smoothed sentence-level BLEU score for approximate scoring")
-      // ("no_reweight,d","Do not reweight forest for cutting plane")
-      ("no_select,n", "Do not use selection heuristic")(
-          "adaptive,A", po::value<double>(),
-          "Use per-feature adaptive learning rate")
-      // ("k_best_size,k", po::value<int>()->default_value(250), "Size of
-      // hypothesis list to search for oracles")
-      ("update_k_best,b", po::value<int>()->default_value(1),
-       "Size of good, bad lists to perform update with")(
-          "verbose", po::value<int>()->default_value(0), "Verbosity level")(
-          "pass_weights", "Pass init weights to the decoder as weight delta")(
-          "reorder",
-          "Reorder k-best output from decoder by decreasing model score")
-      // ("unique_k_best,u", "Unique k-best translation list")
-      // ("weights_output,O",po::value<string>(),"Directory to write weights
-      // to")
-      // ("output_dir,D",po::value<string>(),"Directory to place output in")
-      ("pseudo_doc", "Use pseudo doc score approximation")
-      // ("decoder_config,c",po::value<string>(),"Decoder configuration file")
-      ;
+      "Input feature weights file; can be referenced as {} in decoder command")(
+      "passes,p", po::value<int>()->default_value(0),
+      "Current pass through the training data")(
+      "mt_metric,m", po::value<string>()->default_value("ibm_bleu"),
+      "Scoring metric (ibm_bleu, nist_bleu, koehn_bleu, ter, combi)")(
+      "optimizer,o", po::value<int>()->default_value(1),
+      "Optimizer (sgd=1, mira 1-fear=2, full mira w/ cutting plane=3, full "
+      "mira w/ nbest list=5, local update=4)")(
+      "fear,f", po::value<int>()->default_value(1),
+      "Fear selection (model-cost=1, max-cost=2, pred-base=3)")(
+      "hope,h", po::value<int>()->default_value(1),
+      "Hope selection (model+cost=1, max-cost=2, local-cost=3)")(
+      "max_step_size,C", po::value<double>()->default_value(0.01),
+      "regularization strength (C)")("mt_metric_scale,s",
+                                     po::value<double>()->default_value(1.0),
+                                     "Amount to scale MT loss function by")(
+      "approx_score,a",
+      "Use smoothed sentence-level BLEU score for approximate scoring")(
+      "no_select,n", "Do not use selection heuristic")(
+      "adaptive,A", po::value<double>(),
+      "Use per-feature adaptive learning rate")(
+      "update_k_best,b", po::value<int>()->default_value(1),
+      "Size of good, bad lists to perform update with")(
+      "verbose", po::value<int>()->default_value(0), "Verbosity level")(
+      "pass_weights", "Pass init weights to the decoder as weight delta")(
+      "reorder",
+      "Reorder k-best output from decoder by decreasing model score")(
+      "pseudo_doc", "Use pseudo doc score approximation");
 
   // Decoder command
   po::options_description hidden("Hidden options");
