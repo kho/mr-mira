@@ -15,21 +15,10 @@
 #include <boost/program_options/variables_map.hpp>
 #include <glog/logging.h>
 
-// #include "sentence_metadata.h"
 #include "mteval/scorer.h"
 #include "utils/b64featvector.h"
 #include "utils/tdict.h"
-// #include "verbose.h"
-// #include "viterbi.h"
-// #include "hg.h"
-// #include "prob.h"
-// #include "kbest.h"
-// #include "ff_register.h"
-// #include "decoder.h"
 #include "utils/filelib.h"
-// #include "fdict.h"
-// #include "time.h"
-// #include "utils/sampler.h"
 #include "utils/stringlib.h"
 
 #include "utils/weights.h"
@@ -43,12 +32,10 @@ using boost::shared_ptr;
 namespace po = boost::program_options;
 
 bool invert_score;
-// boost::shared_ptr<MT19937> rng;
 bool approx_score;
 bool sent_approx;
 bool no_reweight = true;
 bool no_select;
-// bool unique_kbest;
 int update_list_size;
 vector<weight_t> dense_weights_g;
 double mt_metric_scale;
@@ -396,10 +383,10 @@ void CuttingPlane(vector<shared_ptr<HypothesisInfo> >* cur_c, bool* again,
       all_hyp[u]->fear =
           -1 * all_hyp[u]->mt_metric + 1 * all_hyp[0]->mt_metric - hope_score +
           t_score;  //relative loss
-      //      all_hyp[u]->oracle_loss = -1*all_hyp[u]->mt_metric -
-      // -1*all_hyp[0]->mt_metric;
-      //all_hyp[u]->oracle_feat_diff = all_hyp[0]->features -
-      //all_hyp[u]->features;
+                    //      all_hyp[u]->oracle_loss = -1*all_hyp[u]->mt_metric -
+                    // -1*all_hyp[0]->mt_metric;
+                    //all_hyp[u]->oracle_feat_diff = all_hyp[0]->features -
+                    //all_hyp[u]->features;
                     //	all_hyp[u]->fear = -1 * all_hyp[u]->mt_metric + t_score;
       //if (PRINT_LIST) LOG(INFO) << all_hyp[u]->mt_metric << " H:" <<
       //all_hyp[u]->hope << " F:" << all_hyp[u]->fear;
@@ -550,306 +537,6 @@ struct GoodBadOracle {
   vector<shared_ptr<HypothesisInfo> > good;
   vector<shared_ptr<HypothesisInfo> > bad;
 };
-
-// struct TrainingObserver : public DecoderObserver {
-//   TrainingObserver(const int k, const DocScorer& d, vector<GoodBadOracle>* o,
-// vector<ScoreP>* cbs) : ds(d), corpus_bleu_sent_stats(*cbs), oracles(*o),
-// kbest_size(k) {
-//   // TrainingObserver(const int k, const DocScorer& d, vector<GoodBadOracle>*
-// o) : ds(d), oracles(*o), kbest_size(k) {
-
-//     //calculate corpus bleu score from previous iterations 1-best for BLEU
-// gain
-//     if(!pseudo_doc)
-//     if(cur_pass > 0)
-//       {
-// 	ScoreP acc;
-// 	for (int ii = 0; ii < corpus_bleu_sent_stats.size(); ii++) {
-// 	  if (!acc) { acc = corpus_bleu_sent_stats[ii]->GetZero(); }
-// 	  acc->PlusEquals(*corpus_bleu_sent_stats[ii]);
-
-// 	}
-// 	corpus_bleu_stats = acc;
-// 	corpus_bleu_score = acc->ComputeScore();
-//       }
-//     //corpus_src_length = 0;
-// }
-//   const DocScorer& ds;
-//   vector<ScoreP>& corpus_bleu_sent_stats;
-//   vector<GoodBadOracle>& oracles;
-//   vector<shared_ptr<HypothesisInfo> > cur_best;
-//   shared_ptr<HypothesisInfo> cur_oracle;
-//   const int kbest_size;
-//   Hypergraph forest;
-//   int cur_sent;
-//   ScoreP corpus_bleu_stats;
-//   float corpus_bleu_score;
-
-//   float corpus_src_length;
-//   float curr_src_length;
-
-//   const int GetCurrentSent() const {
-//     return cur_sent;
-//   }
-
-//   const HypothesisInfo& GetCurrentBestHypothesis() const {
-//     return *cur_best[0];
-//   }
-
-//   const vector<shared_ptr<HypothesisInfo> > GetCurrentBest() const {
-//     return cur_best;
-//   }
-
-//  const HypothesisInfo& GetCurrentOracle() const {
-//     return *cur_oracle;
-//   }
-
-//   const Hypergraph& GetCurrentForest() const {
-//     return forest;
-//   }
-
-//   virtual void NotifyTranslationForest(const SentenceMetadata& smeta,
-// Hypergraph* hg) {
-//     cur_sent = smeta.GetSentenceID();
-//     //LOG(INFO) << "SOURCE " << smeta.GetSourceLength();
-//     curr_src_length = (float) smeta.GetSourceLength();
-//     //UpdateOracles(smeta.GetSentenceID(), *hg);
-//     if(unique_kbest)
-//       UpdateOracles<KBest::FilterUnique>(smeta.GetSentenceID(), *hg);
-//     else
-//       UpdateOracles<KBest::NoFilter<std::vector<WordID> >
-// >(smeta.GetSentenceID(), *hg);
-//     forest = *hg;
-
-//   }
-
-//   shared_ptr<HypothesisInfo> MakeHypothesisInfo(const SparseVector<double>&
-// feats, const double score, const vector<WordID>& hyp) {
-//     shared_ptr<HypothesisInfo> h(new HypothesisInfo);
-//     h->features = feats;
-//     h->mt_metric = score;
-//     h->hyp = hyp;
-//     return h;
-//   }
-
-//   template <class Filter>
-//   void UpdateOracles(int sent_id, const Hypergraph& forest) {
-
-//     bool PRINT_LIST= false;
-//     vector<shared_ptr<HypothesisInfo> >& cur_good = oracles[sent_id].good;
-//     vector<shared_ptr<HypothesisInfo> >& cur_bad = oracles[sent_id].bad;
-//     //TODO: look at keeping previous iterations hypothesis lists around
-//     cur_best.clear();
-//     cur_good.clear();
-//     cur_bad.clear();
-
-//     vector<shared_ptr<HypothesisInfo> > all_hyp;
-
-//     typedef KBest::KBestDerivations<vector<WordID>,
-// ESentenceTraversal,Filter> K;
-//     K kbest(forest,kbest_size);
-
-//     //KBest::KBestDerivations<vector<WordID>, ESentenceTraversal>
-// kbest(forest, kbest_size);
-//     for (int i = 0; i < kbest_size; ++i) {
-//       //const KBest::KBestDerivations<vector<WordID>,
-// ESentenceTraversal>::Derivation* d =
-//       typename K::Derivation *d =
-//           kbest.LazyKthBest(forest.nodes_.size() - 1, i);
-//       if (!d) break;
-
-//       float sentscore;
-//       if(approx_score)
-//       {
-
-//         if(cur_pass > 0 && !pseudo_doc)
-//         {
-//           ScoreP sent_stats = ds[sent_id]->ScoreCandidate(d->yield);
-//           ScoreP corpus_no_best = corpus_bleu_stats->GetZero();
-
-//           corpus_bleu_stats->Subtract(*corpus_bleu_sent_stats[sent_id],
-// &*corpus_no_best);
-//           sent_stats->PlusEquals(*corpus_no_best, 0.5);
-
-//           //compute gain from new sentence in 1-best corpus
-//           sentscore = mt_metric_scale * (sent_stats->ComputeScore() -
-// corpus_no_best->ComputeScore());// - corpus_bleu_score);
-//         }
-//         else if(pseudo_doc)
-//         {
-//           //LOG(INFO) << "CORP:" << corpus_bleu_score << " NEW:" <<
-// sent_stats->ComputeScore() << " sentscore:" << sentscore;
-
-// 	  //-----pseudo-corpus approach
-//           float src_scale = corpus_src_length + curr_src_length;
-//           ScoreP sent_stats = ds[sent_id]->ScoreCandidate(d->yield);
-//           if(!corpus_bleu_stats){ corpus_bleu_stats = sent_stats->GetZero();}
-
-//           sent_stats->PlusEquals(*corpus_bleu_stats);
-//           sentscore =  mt_metric_scale  * src_scale *
-// sent_stats->ComputeScore();
-
-//         }
-//         else
-//         {
-//           //LOG(INFO) << "Using sentence-level approximation - PASS - " <<
-// boost::lexical_cast<std::string>(cur_pass);
-//           //approx style of computation, used for 0th iteration
-//           sentscore = mt_metric_scale *
-// (ds[sent_id]->ScoreCandidate(d->yield)->ComputeSentScore());
-
-//           //use pseudo-doc
-//         }
-
-//       }
-//       else
-//       {
-//         sentscore = mt_metric_scale *
-// (ds[sent_id]->ScoreCandidate(d->yield)->ComputeScore());
-//       }
-
-//       if (invert_score) sentscore *= -1.0;
-//       //LOG(INFO) << TD::GetString(d->yield) << " ||| " << d->score << " |||
-// " << sentscore << " " << approx_sentscore;
-
-//       if (i < update_list_size){
-// 	if (i == 0) //take cur best and add its bleu statistics counts to the
-// pseudo-doc
-//         {  }
-// 	if(PRINT_LIST)LOG(INFO) << TD::GetString(d->yield) << " ||| " << d->score <<
-// " ||| " << sentscore;
-// 	cur_best.push_back( MakeHypothesisInfo(d->feature_values, sentscore,
-// d->yield));
-//       }
-
-//       all_hyp.push_back(MakeHypothesisInfo(d->feature_values,
-// sentscore,d->yield));   //store all hyp to extract oracle best and worst
-
-//     }
-
-//     if(pseudo_doc){
-//       //update psuedo-doc stats
-//       string details, details2;
-//       corpus_bleu_stats->ScoreDetails(&details2);
-//       ScoreP sent_stats = ds[sent_id]->ScoreCandidate(cur_best[0]->hyp);
-//       corpus_bleu_stats->PlusEquals(*sent_stats);
-
-//       sent_stats->ScoreDetails(&details);
-
-//       sent_stats = corpus_bleu_stats;
-//       corpus_bleu_stats = sent_stats->GetZero();
-//       corpus_bleu_stats->PlusEquals(*sent_stats, PSEUDO_SCALE);
-
-//       corpus_src_length = PSEUDO_SCALE * (corpus_src_length +
-// curr_src_length);
-//       LOG(INFO) << "CORP S " << corpus_src_length << " " << curr_src_length
-// << "\n" << details << "\n " << details2;
-
-//     }
-
-//     //figure out how many hyps we can keep maximum
-//     int temp_update_size = update_list_size;
-//     if (all_hyp.size() < update_list_size){ temp_update_size =
-// all_hyp.size();}
-
-//     //sort all hyps by sentscore (bleu)
-//     sort(all_hyp.begin(),all_hyp.end(),HypothesisCompareB);
-
-//     if(PRINT_LIST){  LOG(INFO) << "Sorting "; for(int
-// u=0;u!=all_hyp.size();u++)	LOG(INFO) << all_hyp[u]->mt_metric << " " <<
-// all_hyp[u]->features.dot(dense_weights_g); }
-
-//     //if(optimizer != 4 )
-//     if(hope_select == 1)
-//     {
-//       //find hope hypothesis using model + bleu
-//       if (PRINT_LIST) LOG(INFO) << "HOPE ";
-//       for(int u=0;u!=all_hyp.size();u++)
-//       {
-//         double t_score = all_hyp[u]->features.dot(dense_weights_g);
-//         all_hyp[u]->hope = all_hyp[u]->mt_metric + t_score;
-//         if (PRINT_LIST) LOG(INFO) << all_hyp[u]->mt_metric << " H:" <<
-// all_hyp[u]->hope << " S:" << t_score;
-
-//       }
-
-//       //sort hyps by hope score
-//       sort(all_hyp.begin(),all_hyp.end(),HopeCompareB);
-//     }
-
-//     //assign cur_good the sorted list
-//     cur_good.insert(cur_good.begin(), all_hyp.begin(),
-// all_hyp.begin()+temp_update_size);
-//     if(PRINT_LIST) { LOG(INFO) << "GOOD";  for(int
-// u=0;u!=cur_good.size();u++) LOG(INFO) << cur_good[u]->mt_metric << " " <<
-// cur_good[u]->hope;}
-//     /*    if (!cur_oracle) {      cur_oracle = cur_good[0];
-//           LOG(INFO) << "Set oracle " << cur_oracle->hope << " " <<
-// cur_oracle->fear << " " << cur_oracle->mt_metric;      }
-//           else      {
-//           LOG(INFO) << "Stay oracle " << cur_oracle->hope << " " <<
-// cur_oracle->fear << " " << cur_oracle->mt_metric;      }    */
-
-//     shared_ptr<HypothesisInfo>& oracleN = cur_good[0];
-//     //if(optimizer != 4){
-//     if(fear_select == 1){
-//       //compute fear hyps
-//       if (PRINT_LIST) LOG(INFO) << "FEAR ";
-//       double hope_score = oracleN->features.dot(dense_weights_g);
-//       //double hope_score = cur_oracle->features.dot(dense_weights);
-//       if (PRINT_LIST) LOG(INFO) << "hope score " << hope_score;
-//       for(int u=0;u!=all_hyp.size();u++)
-//       {
-//         double t_score = all_hyp[u]->features.dot(dense_weights_g);
-//         //all_hyp[u]->fear = -1*all_hyp[u]->mt_metric - hope_score + t_score;
-
-//         /*	  all_hyp[u]->fear = -1*all_hyp[u]->mt_metric -
-// -1*cur_oracle->mt_metric - hope_score + t_score; //relative loss
-//                   all_hyp[u]->oracle_loss = -1*all_hyp[u]->mt_metric -
-// -1*cur_oracle->mt_metric;
-//                   all_hyp[u]->oracle_feat_diff = cur_oracle->features -
-// all_hyp[u]->features;*/
-
-//         all_hyp[u]->fear = -1*all_hyp[u]->mt_metric + 1*oracleN->mt_metric -
-// hope_score + t_score; //relative loss
-//         all_hyp[u]->oracle_loss = -1*all_hyp[u]->mt_metric +
-// 1*oracleN->mt_metric;
-//         all_hyp[u]->oracle_feat_diff = oracleN->features -
-// all_hyp[u]->features;
-//         all_hyp[u]->oracleN=oracleN;
-//         //	all_hyp[u]->fear = -1 * all_hyp[u]->mt_metric + t_score;
-//         if (PRINT_LIST) LOG(INFO) << all_hyp[u]->mt_metric << " H:" <<
-// all_hyp[u]->hope << " F:" << all_hyp[u]->fear;
-
-//       }
-
-//       sort(all_hyp.begin(),all_hyp.end(),FearCompareB);
-
-//       cur_bad.insert(cur_bad.begin(), all_hyp.begin(),
-// all_hyp.begin()+temp_update_size);
-//     }
-//     else if(fear_select == 2) //select fear based on cost
-//     {
-//       cur_bad.insert(cur_bad.begin(), all_hyp.end()-temp_update_size,
-// all_hyp.end());
-//       reverse(cur_bad.begin(),cur_bad.end());
-//     }
-//     else //pred-based, fear_select = 3
-//     {
-//       sort(all_hyp.begin(),all_hyp.end(),FearComparePred);
-//       cur_bad.insert(cur_bad.begin(), all_hyp.begin(),
-// all_hyp.begin()+temp_update_size);
-//     }
-
-//     if(PRINT_LIST){ LOG(INFO)<< "BAD"<<endl; for(int
-// u=0;u!=cur_bad.size();u++) LOG(INFO) << cur_bad[u]->mt_metric << " H:" <<
-// cur_bad[u]->hope << " F:" << cur_bad[u]->fear;}
-
-//     LOG(INFO) << "GOOD (BEST): " << cur_good[0]->mt_metric;
-//     LOG(INFO) << " CUR: " << cur_best[0]->mt_metric;
-//     LOG(INFO) << " BAD (WORST): " << cur_bad[0]->mt_metric;
-//   }
-// };
 
 void ReadPastTranslationForScore(const int cur_pass, vector<ScoreP>* c,
                                  DocScorer& ds, const string& od) {
