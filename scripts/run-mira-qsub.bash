@@ -9,7 +9,7 @@ EOF
 
 CMD=$0
 function log {
-    echo "$CMD] $@" 1>&2
+    echo "$(date)] $@" 1>&2
 }
 
 set -e
@@ -59,6 +59,7 @@ for i in `seq $ITERS`; do
 	    -w -c -- "${QSUB_OPTS[@]}"; then
 	    break
 	fi
+	echo "Try $j failed"
     done
     if [ ! -e "$WORKDIR/reduce.success" ]; then
 	log "all $MAXTRY runs failed"
