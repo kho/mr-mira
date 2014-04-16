@@ -149,7 +149,7 @@ EOF`
     job=`echo "$cmd" | qsub -N "$short_output.map.$bn" -o /dev/null -e /dev/null "$@" | cut -f1 -d.`
     alljobs+=("$job")
     afterok="$afterok:$job"
-    sleep 0.01
+    sleep 0.1
 done
 
 if [ "$reducer" != NONE ]; then

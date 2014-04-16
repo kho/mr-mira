@@ -7,7 +7,6 @@ Use ITERS="x y" to restart from previous runs, otherwise INIT_WEIGHTS is require
 EOF
 }
 
-CMD=$0
 function log {
     echo "$(date)] $@" 1>&2
 }
