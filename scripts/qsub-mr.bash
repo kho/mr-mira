@@ -108,7 +108,7 @@ check_opts || exit 1
 
 mkdir -p "$output"
 
-short_output="$(basename $(dirname $output))/$(basename $output)"
+short_output="$(basename $(dirname $(readlink -f $output)))/$(basename $output)"
 input=`readlink -f "$input"`
 output=`readlink -f "$output"`
 
