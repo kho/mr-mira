@@ -8,7 +8,6 @@ import glob
 import os
 import os.path
 import pipes
-import shutil
 import subprocess
 import sys
 import time
@@ -44,10 +43,18 @@ def format_task_ids(ids):
     return ','.join(parts)
 
 def wait_qsub(qsub_args, poll=15):
-    jobid = subprocess.check_output(['qsub'] + qsub_args).strip()
-    with open(os.devnull, 'w') as devnull:
-        while subprocess.call(['qstat', jobid], stderr=devnull, stdout=devnull) == 0:
-            time.sleep(poll)
+    try:
+        jobid = subprocess.check_output(['qsub'] + qsub_args).strip()
+    except subprocess.CalledProcessError as e:
+        common.error(e)
+        return
+    try:
+        with open(os.devnull, 'w') as devnull:
+            while subprocess.call(['qstat', jobid], stderr=devnull, stdout=devnull) == 0:
+                time.sleep(poll)
+    except KeyboardInterrupt:
+        subprocess.call(['qdel', jobid])
+        raise
 
 def basename(path):
     path = os.path.basename(path)
@@ -64,6 +71,7 @@ def run_qsub_mr(options):
     cwd = os.getcwd()
     # Find input files.
     input_files = glob.glob(options.input)
+    input_files.sort()
     common.check(input_files, 'input pattern does not list any file')
     common.check(len(set([basename(i) for i in input_files])) == len(input_files), 'input pattern matches input files with duplicate basename')
     if options.verbose:
@@ -187,7 +195,7 @@ def run_qsub_mr(options):
                 os.rename(src, dst)
     # Remove workdir
     if not options.keep_workdir:
-        shutil.rmtree(workdir)
+        subprocess.call(['rm', '-rf', workdir])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)

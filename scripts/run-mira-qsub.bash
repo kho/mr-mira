@@ -50,22 +50,15 @@ for i in `seq $ITERS`; do
 	log "cannot find $LAST_WEIGHTS"
 	exit 1
     fi
-    for j in $(seq "$MAXTRY"); do
-	if "$SUBMIT" \
-	    --mapper "$MAPPER -w $LAST_WEIGHTS -m $METRIC -s 1000 -a -b 1000 -o 2 -p 0 $MIRA_OPTS -- $*" \
-	    --reducer "$REDUCER" \
-	    --input "$INPUT/*" \
-	    --output "$WORKDIR" \
-	    --verbose \
-	    --retry -- "${QSUB_OPTS[@]}"; then
-	    break
-	fi
-	echo "Try $j failed"
-    done
-    if [ ! -e "$WORKDIR/reduce.out.gz" ]; then
-	log "all $MAXTRY runs failed"
-	exit 1
-    fi
+    "$SUBMIT" \
+	--name "mira-$(printf %04d $i)" \
+	--mapper "$MAPPER -w $LAST_WEIGHTS -m $METRIC -s 1000 -a -b 1000 -o 2 -p 0 $MIRA_OPTS -- $*" \
+	--reducer "$REDUCER" \
+	--input "$INPUT/*" \
+	--output "$WORKDIR" \
+	--max_tries "$MAXTRY" \
+	--verbose \
+	--retry -- "${QSUB_OPTS[@]}"
 
     n=`zcat "$WORKDIR/reduce.out.gz" | wc -l`
     n=$(($n-1))
