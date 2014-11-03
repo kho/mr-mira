@@ -12,10 +12,11 @@ function log {
 }
 
 set -e
+set -o pipefail
 
-SUBMIT=`which qsub-mr.bash`
-MAPPER=`which kbest_mirav5`
-REDUCER=`which mr_mira_reduce`
+SUBMIT=$(dirname "$0")/mr.py
+MAPPER=$(dirname "$0")/kbest_mirav5
+REDUCER=$(dirname "$0")/mr_mira_reduce
 
 [ "x$INPUT" != x ] || { log "Set INPUT"; usage; exit 1; }
 [ "x$OUTPUT" != x ] || { log "Set OUTPUT"; usage; exit 1; }
@@ -51,23 +52,23 @@ for i in `seq $ITERS`; do
     fi
     for j in $(seq "$MAXTRY"); do
 	if "$SUBMIT" \
-	    -m "$MAPPER -w $LAST_WEIGHTS -m $METRIC -s 1000 -a -b 1000 -o 2 -p 0 $MIRA_OPTS -- $*" \
-	    -r "$REDUCER" \
-	    -i "$INPUT" \
-	    -o "$WORKDIR" \
-	    -w -c -- "${QSUB_OPTS[@]}"; then
+	    --mapper "$MAPPER -w $LAST_WEIGHTS -m $METRIC -s 1000 -a -b 1000 -o 2 -p 0 $MIRA_OPTS -- $*" \
+	    --reducer "$REDUCER" \
+	    --input "$INPUT/*" \
+	    --output "$WORKDIR" \
+	    --verbose \
+	    --retry -- "${QSUB_OPTS[@]}"; then
 	    break
 	fi
 	echo "Try $j failed"
     done
-    if [ ! -e "$WORKDIR/reduce.success" ]; then
+    if [ ! -e "$WORKDIR/reduce.out.gz" ]; then
 	log "all $MAXTRY runs failed"
 	exit 1
     fi
 
     n=`zcat "$WORKDIR/reduce.out.gz" | wc -l`
     n=$(($n-1))
-    gzip "$WORKDIR"/*.err &
     zcat "$WORKDIR/reduce.out.gz" | head -n$n | sort -n | cut -f2 | gzip - > "$WORKDIR/best.out.gz" &
     zcat "$WORKDIR/reduce.out.gz" | tail -n1 | sed -e 's/\t/\n/g' | LC_ALL=C sort > "$WORKDIR/weights.out"
 done
